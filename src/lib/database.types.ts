@@ -55,11 +55,13 @@ export interface Database {
         Row: ProfileRow;
         Insert: Partial<ProfileRow> & { id: string };
         Update: Partial<ProfileRow>;
+        Relationships: [];
       };
       medical_profiles: {
         Row: MedicalProfileRow;
         Insert: Partial<MedicalProfileRow> & { user_id: string };
         Update: Partial<MedicalProfileRow>;
+        Relationships: [];
       };
       access_logs: {
         Row: AccessLogRow;
@@ -68,6 +70,7 @@ export interface Database {
           created_at?: string;
         };
         Update: Partial<AccessLogRow>;
+        Relationships: [];
       };
     };
     Views: Record<string, never>;
@@ -76,5 +79,6 @@ export interface Database {
       user_role: UserRole;
       provider_status: ProviderStatus;
     };
+    CompositeTypes: Record<string, never>;
   };
 }

@@ -20,8 +20,20 @@ function assertServer(): void {
   }
 }
 
-function toBytes(b64: string): Uint8Array {
-  return Uint8Array.from(Buffer.from(b64, "base64"));
+/** Decode base64 into an ArrayBuffer-backed Uint8Array (satisfies BufferSource). */
+function toBytes(b64: string): Uint8Array<ArrayBuffer> {
+  const buf = Buffer.from(b64, "base64");
+  const out = new Uint8Array(buf.byteLength);
+  out.set(buf);
+  return out;
+}
+
+/** UTF-8 encode into an ArrayBuffer-backed Uint8Array. */
+function strBytes(s: string): Uint8Array<ArrayBuffer> {
+  const enc = new TextEncoder().encode(s);
+  const out = new Uint8Array(enc.byteLength);
+  out.set(enc);
+  return out;
 }
 
 function toB64(bytes: ArrayBuffer | Uint8Array): string {
@@ -57,7 +69,7 @@ export async function encryptField(plaintext: string | null | undefined): Promis
   const ct = await crypto.subtle.encrypt(
     { name: ALGO, iv },
     key,
-    new TextEncoder().encode(plaintext),
+    strBytes(plaintext),
   );
   return `${toB64(iv)}:${toB64(ct)}`;
 }
