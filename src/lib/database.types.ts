@@ -19,15 +19,20 @@ export type BloodGroup =
   | "O-"
   | "unknown";
 
-export interface ProfileRow {
+// NOTE: these MUST be `type` aliases, not `interface`s. supabase-js's
+// GenericSchema constrains each table's Row to `Record<string, unknown>`, and
+// an `interface` is not assignable to that (it has no implicit index
+// signature) — which silently makes every query result `never`. Object type
+// aliases are assignable, so the Database type is accepted and queries are typed.
+export type ProfileRow = {
   id: string;
   role: UserRole;
   provider_status: ProviderStatus;
   full_name: string | null;
   created_at: string;
-}
+};
 
-export interface MedicalProfileRow {
+export type MedicalProfileRow = {
   id: string;
   user_id: string;
   blood_group: BloodGroup;
@@ -38,15 +43,15 @@ export interface MedicalProfileRow {
   emergency_contact_phone: string | null;
   qr_token: string;
   updated_at: string;
-}
+};
 
-export interface AccessLogRow {
+export type AccessLogRow = {
   id: string;
   accessor_id: string;
   patient_id: string;
   access_type: string;
   created_at: string;
-}
+};
 
 export interface Database {
   public: {
