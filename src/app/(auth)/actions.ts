@@ -5,6 +5,7 @@ import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { credentialsSchema, signupSchema } from "@/lib/validation";
 import { checkRateLimit } from "@/lib/rate-limit";
+import { isAdmin } from "@/lib/admin-guard";
 
 export interface AuthState {
   error?: string;
@@ -28,11 +29,22 @@ export async function signUpAction(
     return { error: parsed.error.issues[0]?.message ?? "Check your details" };
   }
 
+  // Doctors capture a license number at signup; it's carried in metadata so the
+  // /provider/verify page can prefill it (the document upload happens there).
+  const licenseNumber =
+    role === "provider" ? String(formData.get("license_number") ?? "").trim() : "";
+
   const supabase = await createClient();
   const { data, error } = await supabase.auth.signUp({
     email: parsed.data.email,
     password: parsed.data.password,
-    options: { data: { role, full_name: parsed.data.full_name } },
+    options: {
+      data: {
+        role,
+        full_name: parsed.data.full_name,
+        ...(role === "provider" ? { license_number: licenseNumber } : {}),
+      },
+    },
   });
 
   if (error) {
@@ -87,6 +99,10 @@ export async function signInAction(
   const {
     data: { user },
   } = await supabase.auth.getUser();
+
+  // Admins (allowlist) land on the admin dashboard.
+  if (await isAdmin()) redirect("/admin");
+
   const { data: profile } = await supabase
     .from("profiles")
     .select("role")

@@ -221,7 +221,7 @@ export default async function DashboardPage({
                 <span className="flex-1 text-sm text-foreground">
                   {log.accessor_name
                     ? `Emergency view by ${log.accessor_name}`
-                    : "Emergency view by a verified provider"}
+                    : "Emergency view by a verified doctor"}
                 </span>
                 <span className="data-value text-sm text-muted-foreground">
                   {formatWhen(log.created_at)}

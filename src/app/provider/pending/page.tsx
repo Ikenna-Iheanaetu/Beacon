@@ -12,7 +12,7 @@ export default function ProviderPendingPage() {
           href="/provider/login"
           className="font-medium text-primary hover:underline"
         >
-          Go to provider sign in
+          Go to doctor sign in
         </Link>
       }
     >

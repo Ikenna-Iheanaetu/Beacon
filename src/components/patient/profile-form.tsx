@@ -185,6 +185,23 @@ export function ProfileForm({
             </Select>
           </Field>
         </div>
+
+        <div className="rule-dotted pt-4">
+          <Field
+            htmlFor="national_id"
+            label="National ID (optional)"
+            hint="Lets an approved doctor pull up your record by ID if your QR code isn't to hand. Stored encrypted."
+          >
+            <Input
+              id="national_id"
+              name="national_id"
+              autoComplete="off"
+              className="tabular"
+              defaultValue={initial?.national_id ?? ""}
+              placeholder="e.g. 1234567890"
+            />
+          </Field>
+        </div>
       </Section>
 
       {/* 02 — Allergies */}

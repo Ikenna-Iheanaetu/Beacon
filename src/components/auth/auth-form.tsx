@@ -79,6 +79,26 @@ export function AuthForm({
         </div>
       )}
 
+      {isSignup && role === "provider" && (
+        <div className="flex flex-col gap-2">
+          <Label htmlFor="license_number">
+            Medical license number
+            <Required />
+          </Label>
+          <Input
+            id="license_number"
+            name="license_number"
+            type="text"
+            autoCapitalize="characters"
+            autoComplete="off"
+            spellCheck={false}
+            required
+            className="tabular"
+            placeholder="e.g. MDCN-123456"
+          />
+        </div>
+      )}
+
       <div className="flex flex-col gap-2">
         <Label htmlFor="email">
           Email

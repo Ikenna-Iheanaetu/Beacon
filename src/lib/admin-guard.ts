@@ -1,5 +1,6 @@
 import "server-only";
 import { getSessionUser } from "@/lib/auth";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 /** Admin allowlist from ADMIN_EMAILS (comma-separated), lower-cased. */
 export function adminEmails(): string[] {
@@ -16,9 +17,28 @@ export async function isAdmin(): Promise<boolean> {
   return Boolean(email && adminEmails().includes(email));
 }
 
-/** Throws "FORBIDDEN" unless the caller is an allowlisted admin. */
+/**
+ * Returns the verified admin's user, or throws "FORBIDDEN". Also mirrors the
+ * allowlist into the DB `admin` role (so admin_actions FKs and audit reads are
+ * coherent). The allowlist remains the authoritative gate — a stale DB role
+ * grants nothing because every privileged action re-checks `isAdmin()`.
+ */
 export async function requireAdmin() {
-  if (!(await isAdmin())) {
+  const user = await getSessionUser();
+  const email = user?.email?.toLowerCase();
+  if (!user || !email || !adminEmails().includes(email)) {
     throw new Error("FORBIDDEN");
   }
+  // Opportunistic, idempotent role mirror.
+  try {
+    const admin = createAdminClient();
+    await admin
+      .from("profiles")
+      .update({ role: "admin" })
+      .eq("id", user.id)
+      .neq("role", "admin");
+  } catch {
+    // non-fatal — authorization already passed via the allowlist
+  }
+  return user;
 }

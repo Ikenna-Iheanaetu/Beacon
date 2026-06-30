@@ -39,12 +39,13 @@ export async function getOwnMedicalProfileDecrypted(): Promise<DecryptedMedicalP
   const row = await getOwnMedicalProfile();
   if (!row) return null;
 
-  const [allergies, medications, medical_conditions, additional_notes] =
+  const [allergies, medications, medical_conditions, additional_notes, national_id] =
     await Promise.all([
       decryptField(row.allergies),
       decryptField(row.medications),
       decryptField(row.medical_conditions),
       decryptField(row.additional_notes),
+      decryptField(row.national_id),
     ]);
 
   return {
@@ -53,6 +54,7 @@ export async function getOwnMedicalProfileDecrypted(): Promise<DecryptedMedicalP
     medications,
     medical_conditions,
     additional_notes,
+    national_id: national_id || null,
   };
 }
 

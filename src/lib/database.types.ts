@@ -6,8 +6,15 @@
  *   supabase gen types typescript --project-id <id> > src/lib/database.types.ts
  */
 
-export type UserRole = "patient" | "provider";
+export type UserRole = "patient" | "provider" | "admin";
 export type ProviderStatus = "none" | "pending" | "approved";
+export type VerificationStatus = "pending" | "verified" | "rejected";
+export type AdminActionType =
+  | "record_view"
+  | "pdf_export"
+  | "email_send"
+  | "provider_approve"
+  | "provider_reject";
 export type Sex =
   | "female"
   | "male"
@@ -61,16 +68,44 @@ export type MedicalProfileRow = {
   emergency_contact_2_relationship: string | null;
   primary_physician_name: string | null;
   primary_physician_phone: string | null;
+  // 0004_verification_audit
+  national_id: string | null;       // AES-encrypted (display)
+  national_id_hash: string | null;  // keyed HMAC for exact lookup
 };
 
 export type AccessLogRow = {
   id: string;
   accessor_id: string;
   patient_id: string;
-  access_type: string;
+  access_type: string; // 'emergency_view' | 'admin_review' | 'national_id_lookup'
   created_at: string;
   accessor_name: string | null;
   accessor_email: string | null;
+  note: string | null;
+};
+
+export type ProviderVerificationRow = {
+  id: string;
+  provider_id: string;
+  license_number: string;
+  license_document_path: string | null;
+  status: VerificationStatus;
+  verify_check_result: unknown | null;
+  verified_by: string | null;
+  verified_at: string | null;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type AdminActionRow = {
+  id: string;
+  admin_id: string;
+  action_type: AdminActionType;
+  patient_id: string | null;
+  reason: string | null;
+  metadata: unknown | null;
+  created_at: string;
 };
 
 export interface Database {
@@ -90,11 +125,30 @@ export interface Database {
       };
       access_logs: {
         Row: AccessLogRow;
-        Insert: Omit<AccessLogRow, "id" | "created_at"> & {
+        Insert: Partial<AccessLogRow> & {
+          accessor_id: string;
+          patient_id: string;
+          access_type: string;
+        };
+        Update: Partial<AccessLogRow>;
+        Relationships: [];
+      };
+      provider_verifications: {
+        Row: ProviderVerificationRow;
+        Insert: Partial<ProviderVerificationRow> & {
+          provider_id: string;
+          license_number: string;
+        };
+        Update: Partial<ProviderVerificationRow>;
+        Relationships: [];
+      };
+      admin_actions: {
+        Row: AdminActionRow;
+        Insert: Omit<AdminActionRow, "id" | "created_at"> & {
           id?: string;
           created_at?: string;
         };
-        Update: Partial<AccessLogRow>;
+        Update: Partial<AdminActionRow>;
         Relationships: [];
       };
     };
@@ -103,6 +157,7 @@ export interface Database {
     Enums: {
       user_role: UserRole;
       provider_status: ProviderStatus;
+      admin_action_type: AdminActionType;
     };
     CompositeTypes: Record<string, never>;
   };

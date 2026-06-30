@@ -2,7 +2,7 @@ import Link from "next/link";
 import { AuthShell } from "@/components/auth/auth-shell";
 import { AuthForm } from "@/components/auth/auth-form";
 
-export const metadata = { title: "Provider sign in" };
+export const metadata = { title: "Doctor sign in" };
 
 export default async function ProviderLoginPage({
   searchParams,
@@ -13,7 +13,7 @@ export default async function ProviderLoginPage({
 
   return (
     <AuthShell
-      title="Provider sign in"
+      title="Doctor sign in"
       subtitle="Sign in to view emergency medical information."
       footer={
         <>
@@ -22,7 +22,7 @@ export default async function ProviderLoginPage({
             href="/provider/signup"
             className="font-medium text-primary hover:underline"
           >
-            Register as a provider
+            Register as a doctor
           </Link>
         </>
       }

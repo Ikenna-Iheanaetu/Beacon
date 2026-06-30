@@ -86,6 +86,14 @@ export const medicalProfileSchema = z.object({
   // Primary doctor
   primary_physician_name: optionalName,
   primary_physician_phone: optionalPhone,
+  // National ID (backup lookup when no QR is present)
+  national_id: z
+    .string()
+    .trim()
+    .max(40, "Please keep this under 40 characters")
+    .regex(/^[A-Za-z0-9-]*$/, "Use only letters, numbers, and dashes")
+    .optional()
+    .or(z.literal("")),
 });
 
 export type MedicalProfileInput = z.infer<typeof medicalProfileSchema>;
@@ -102,3 +110,48 @@ export const signupSchema = credentialsSchema.extend({
 
 export type Credentials = z.infer<typeof credentialsSchema>;
 export type SignupInput = z.infer<typeof signupSchema>;
+
+// ── Phase 2 schemas ──────────────────────────────────────────────────────
+
+/** Doctor registration: signup + a license number. */
+export const doctorRegistrationSchema = signupSchema.extend({
+  license_number: z
+    .string()
+    .trim()
+    .regex(/^[A-Za-z0-9-]{4,32}$/, "Enter a valid license number"),
+});
+export type DoctorRegistrationInput = z.infer<typeof doctorRegistrationSchema>;
+
+/** Required free-text reason for any privileged admin record access. */
+export const reasonSchema = z
+  .string()
+  .trim()
+  .min(10, "Give a brief reason (at least 10 characters)")
+  .max(500, "Please keep the reason under 500 characters");
+
+/** National ID, used both for saving and for the doctor lookup. */
+export const nationalIdSchema = z
+  .string()
+  .trim()
+  .min(5, "Enter a valid national ID")
+  .max(40, "Enter a valid national ID")
+  .regex(/^[A-Za-z0-9-]+$/, "Use only letters, numbers, and dashes");
+
+/** Email a record to a recipient (referral / transfer). */
+export const recordTransferSchema = z.object({
+  recipient: z.string().trim().email("Enter a valid email address"),
+  note: z
+    .string()
+    .trim()
+    .max(500, "Please keep the note under 500 characters")
+    .optional()
+    .or(z.literal("")),
+});
+
+/** Allowed license document upload types and size (validated in the action). */
+export const LICENSE_FILE_TYPES = [
+  "application/pdf",
+  "image/png",
+  "image/jpeg",
+] as const;
+export const LICENSE_FILE_MAX_BYTES = 5 * 1024 * 1024; // 5 MB

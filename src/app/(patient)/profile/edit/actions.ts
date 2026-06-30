@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { encryptField } from "@/lib/crypto";
+import { nationalIdHash } from "@/lib/verification";
 import { medicalProfileSchema } from "@/lib/validation";
 
 export interface SaveState {
@@ -46,6 +47,7 @@ export async function saveMedicalProfile(
     emergency_contact_2_relationship: formData.get("emergency_contact_2_relationship"),
     primary_physician_name: formData.get("primary_physician_name"),
     primary_physician_phone: formData.get("primary_physician_phone"),
+    national_id: formData.get("national_id"),
   });
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Please check the form" };
@@ -83,6 +85,8 @@ export async function saveMedicalProfile(
         v.emergency_contact_2_relationship || null,
       primary_physician_name: v.primary_physician_name || null,
       primary_physician_phone: v.primary_physician_phone || null,
+      national_id: await encryptField(v.national_id),
+      national_id_hash: v.national_id ? nationalIdHash(v.national_id) : null,
       updated_at: new Date().toISOString(),
     },
     { onConflict: "user_id" },

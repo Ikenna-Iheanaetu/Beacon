@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { ShieldCheck, ShieldOff } from "lucide-react";
 import { toast } from "sonner";
 import { setEmergencyAccess } from "@/app/(patient)/qr/actions";
+import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
 
 export function EmergencyAccessToggle({ enabled }: { enabled: boolean }) {
@@ -60,25 +61,12 @@ export function EmergencyAccessToggle({ enabled }: { enabled: boolean }) {
         </div>
       </div>
 
-      <button
-        type="button"
-        role="switch"
-        aria-checked={on}
-        aria-label="Emergency access"
-        onClick={toggle}
+      <Switch
+        checked={on}
+        onCheckedChange={toggle}
         disabled={pending}
-        className={cn(
-          "relative inline-flex h-7 w-12 shrink-0 items-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-60",
-          on ? "bg-primary" : "bg-muted-foreground/40",
-        )}
-      >
-        <span
-          className={cn(
-            "inline-block size-5 transform rounded-full bg-white shadow transition-transform",
-            on ? "translate-x-6" : "translate-x-1",
-          )}
-        />
-      </button>
+        aria-label="Emergency access"
+      />
     </div>
   );
 }

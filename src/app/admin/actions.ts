@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { requireAdmin } from "@/lib/admin-guard";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { logAdminAction } from "@/lib/admin";
 
 export interface ApproveState {
   error?: string;
@@ -13,8 +14,9 @@ export async function approveProvider(
   _prev: ApproveState,
   formData: FormData,
 ): Promise<ApproveState> {
+  let adminUser;
   try {
-    await requireAdmin();
+    adminUser = await requireAdmin();
   } catch {
     return { error: "You don't have permission to do that." };
   }
@@ -32,6 +34,13 @@ export async function approveProvider(
     .eq("role", "provider");
 
   if (error) return { error: "Couldn't approve that provider. Try again." };
+
+  await logAdminAction({
+    adminId: adminUser.id,
+    actionType: "provider_approve",
+    patientId: null,
+    metadata: { provider_id: providerId },
+  });
 
   revalidatePath("/admin");
   return {};

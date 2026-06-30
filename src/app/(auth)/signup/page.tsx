@@ -21,7 +21,7 @@ export default function SignupPage() {
           </Link>
           <br />
           <span className="mt-2 inline-block">
-            Are you a healthcare provider?{" "}
+            Are you a doctor?{" "}
             <Link
               href="/provider/signup"
               className="font-medium text-primary hover:underline"

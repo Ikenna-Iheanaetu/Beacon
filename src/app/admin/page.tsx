@@ -1,31 +1,43 @@
-import { ShieldAlert, Users } from "lucide-react";
-import { isAdmin } from "@/lib/admin-guard";
-import { createAdminClient } from "@/lib/supabase/admin";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import Link from "next/link";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { ApproveButton } from "@/components/admin/approve-button";
+  ArrowRight,
+  FileSearch,
+  ScrollText,
+  ShieldAlert,
+  ShieldCheck,
+  UserCheck,
+} from "lucide-react";
+import { isAdmin } from "@/lib/admin-guard";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Brand } from "@/components/brand";
 
 export const dynamic = "force-dynamic";
 
 export const metadata = {
-  title: "Provider approvals",
+  title: "Admin",
   robots: { index: false, follow: false },
 };
 
-function formatWhen(iso: string): string {
-  return new Date(iso).toLocaleString(undefined, {
-    dateStyle: "medium",
-    timeStyle: "short",
-  });
-}
+const LINKS = [
+  {
+    href: "/admin/verifications",
+    icon: UserCheck,
+    title: "Provider approvals",
+    description: "Review and verify providers before they can open records.",
+  },
+  {
+    href: "/admin/records",
+    icon: FileSearch,
+    title: "Find a record",
+    description: "Look up a patient and open their record with a logged reason.",
+  },
+  {
+    href: "/admin/audit",
+    icon: ScrollText,
+    title: "Audit log",
+    description: "Every privileged admin action, newest first.",
+  },
+] as const;
 
 export default async function AdminPage() {
   if (!(await isAdmin())) {
@@ -44,80 +56,50 @@ export default async function AdminPage() {
     );
   }
 
-  const admin = createAdminClient();
-
-  const { data: pending } = await admin
-    .from("profiles")
-    .select("id, full_name, created_at")
-    .eq("role", "provider")
-    .eq("provider_status", "pending")
-    .order("created_at", { ascending: true });
-
-  // Emails live in auth.users; map them in for display.
-  const { data: userList } = await admin.auth.admin.listUsers({ perPage: 1000 });
-  const emailById = new Map(userList?.users.map((u) => [u.id, u.email ?? ""]));
-
-  const rows = pending ?? [];
-
   return (
-    <main className="mx-auto w-full max-w-3xl px-4 py-10">
-      <header className="beacon-rise mb-7">
-        <span className="data-label text-primary-400">Administration</span>
+    <main className="bg-aurora mx-auto w-full max-w-3xl px-4 py-10">
+      <header className="beacon-rise mb-8">
+        <Brand href="/" />
+        <span className="data-label mt-6 block text-primary-400">
+          Administration
+        </span>
         <h1 className="font-display mt-1 flex items-center gap-2 text-3xl font-semibold tracking-tight text-foreground">
-          <Users className="size-7 text-primary" />
-          Provider approvals
+          <ShieldCheck className="size-7 text-primary" />
+          Admin oversight
         </h1>
         <p className="mt-1.5 text-sm text-muted-foreground">
-          Review and approve providers before they can open emergency records.
+          Approve providers, find and share records, and review the audit trail.
         </p>
       </header>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Pending providers</CardTitle>
-        </CardHeader>
-        <CardContent className="p-0">
-          {rows.length === 0 ? (
-            <p className="px-6 py-8 text-center text-sm text-muted-foreground">
-              No providers are waiting for approval.
-            </p>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Email</TableHead>
-                  <TableHead>Registered</TableHead>
-                  <TableHead className="text-right">Action</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {rows.map((p) => (
-                  <TableRow key={p.id}>
-                    <TableCell className="font-medium">
-                      {p.full_name ?? "—"}
-                    </TableCell>
-                    <TableCell className="tabular text-muted-foreground">
-                      {emailById.get(p.id) ?? "—"}
-                    </TableCell>
-                    <TableCell className="tabular text-muted-foreground">
-                      {formatWhen(p.created_at)}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end">
-                        <ApproveButton
-                          providerId={p.id}
-                          name={p.full_name ?? "provider"}
-                        />
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
+      <div className="grid gap-4 sm:grid-cols-2">
+        {LINKS.map((link) => {
+          const Icon = link.icon;
+          return (
+            <Link
+              key={link.href}
+              href={link.href}
+              className="surface surface-lift group flex flex-col gap-3 p-6"
+            >
+              <span className="grid size-11 place-items-center rounded-xl bg-primary-50 text-primary-700">
+                <Icon className="size-5" />
+              </span>
+              <div className="flex-1">
+                <h2 className="font-display text-lg font-semibold tracking-tight text-foreground">
+                  {link.title}
+                </h2>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  {link.description}
+                </p>
+              </div>
+              <span className="inline-flex items-center gap-1 text-sm font-medium text-primary">
+                Open
+                <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" />
+              </span>
+            </Link>
+          );
+        })}
+      </div>
     </main>
   );
 }

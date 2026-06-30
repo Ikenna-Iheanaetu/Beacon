@@ -11,6 +11,7 @@ import { getCurrentProfile, isApprovedProvider } from "@/lib/auth";
 import { readEmergencyProfile } from "@/lib/emergency";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { TriageCard } from "@/components/emergency/triage-card";
+import { DownloadPdfButton } from "@/components/emergency/download-pdf-button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { SignOutButton } from "@/components/sign-out-button";
@@ -43,7 +44,7 @@ export default async function EmergencyPage({
           <AlertTitle>Please sign in</AlertTitle>
           <AlertDescription>
             <Link href={`/provider/login?next=/e/${qr_token}`} className="underline">
-              Sign in as a provider
+              Sign in as a doctor
             </Link>{" "}
             to view emergency information.
           </AlertDescription>
@@ -65,7 +66,7 @@ export default async function EmergencyPage({
           <AlertDescription className="flex flex-col gap-3">
             {pending
               ? "Your provider account hasn't been approved yet. You'll be able to view emergency information once an administrator approves you."
-              : "Only approved healthcare providers can view emergency information."}
+              : "Only approved doctors can view emergency information."}
             <SignOutButton variant="outline" />
           </AlertDescription>
         </Alert>
@@ -120,6 +121,9 @@ export default async function EmergencyPage({
   return (
     <main className="min-h-dvh bg-muted/40 px-4 py-6 sm:py-10">
       <TriageCard data={result.view} />
+      <div className="mx-auto mt-4 w-full max-w-xl print:hidden">
+        <DownloadPdfButton token={qr_token} />
+      </div>
     </main>
   );
 }

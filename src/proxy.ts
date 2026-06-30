@@ -10,6 +10,8 @@ const PROTECTED_PREFIXES = [
   "/qr",
   "/access-log",
   "/admin",
+  // /provider/* self-guards in-page (its /login and /signup are public, so a
+  // broad prefix here would wrongly block them).
   "/e/",
 ];
 

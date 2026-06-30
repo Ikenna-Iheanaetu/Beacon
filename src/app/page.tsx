@@ -108,7 +108,7 @@ export default async function LandingPage() {
                   <Button asChild size="lg" variant="outline">
                     <Link href="/provider/signup">
                       <ShieldCheck />
-                      I&apos;m a provider
+                      I&apos;m a doctor
                     </Link>
                   </Button>
                 </>
