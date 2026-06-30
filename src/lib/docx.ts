@@ -17,35 +17,33 @@ import {
 } from "docx";
 import type { EmergencyView } from "@/lib/emergency";
 import {
-  recordIdentity,
-  recordCritical,
-  recordSections,
+  recordInfoGrid,
+  recordMedicalColumns,
+  recordNotes,
+  recordContacts,
   CONFIDENTIALITY_NOTICE,
-  type RecordField,
+  type InfoField,
+  type MedicalColumn,
+  type ContactRow,
 } from "@/lib/record-content";
 
 /**
  * Render a patient record to a Word (.docx) document — the editable companion
  * to the PDF (`pdf.ts`). Content (labels, order, criticality) is shared via
- * `record-content.ts` so the two formats never drift apart. The styling mirrors
- * the PDF's teal "official document" aesthetic using Word-native tables,
- * shading, and borders.
+ * `record-content.ts` so the two formats never drift apart. Layout mirrors the
+ * PDF's "health passport" ID-card design using Word-native tables and borders.
  */
 
 // Hex colours (no leading #) matching the teal brand tokens.
 const TEAL_700 = "0F766E";
-const TEAL_800 = "115E59";
+const TEAL_600 = "0D9488";
 const TEAL_500 = "14B8A6";
-const TEAL_50 = "F0FDFA";
-const TEAL_200 = "99F6E4";
 const INK = "1A1714";
 const MUTED = "6B7280";
 const FAINT = "9CA3AF";
 const BORDER = "DDE2E1";
 const WHITE = "FFFFFF";
 const CRIT = "B71C1C";
-const CRIT_BG = "FDF2F2";
-const CRIT_BORDER = "F2CDCD";
 
 const FULL = { size: 100, type: WidthType.PERCENTAGE } as const;
 const NO_BORDER = { style: BorderStyle.NONE, size: 0, color: "FFFFFF" } as const;
@@ -62,39 +60,49 @@ export interface RecordDocxInput {
   view: EmergencyView;
   generatedFor: string;
   qrPngDataUrl?: string;
+  qrToken?: string;
 }
 
 export async function renderRecordDocx({
   view,
   generatedFor,
   qrPngDataUrl,
+  qrToken,
 }: RecordDocxInput): Promise<Uint8Array> {
-  const id = recordIdentity(view);
-
   const body: (Paragraph | Table)[] = [
-    // Teal brand band (in the body, full colour, with the QR — mirrors the PDF)
-    ...brandBand(qrPngDataUrl),
-    // Patient identity
+    headerBand(qrPngDataUrl),
+    divider(),
     new Paragraph({
-      spacing: { before: 200, after: 20 },
-      children: [new TextRun({ text: id.name, bold: true, size: 40, color: INK })],
+      spacing: { before: 160, after: 10 },
+      children: [new TextRun({ text: "Health Passport", bold: true, size: 36, color: INK })],
     }),
     new Paragraph({
       spacing: { after: 220 },
-      children: [new TextRun({ text: id.meta, size: 19, color: MUTED })],
+      children: [new TextRun({ text: "Personal Health Summary", size: 18, color: MUTED })],
     }),
-    criticalRow(view),
-    new Paragraph({ spacing: { after: 120 } }),
+    infoGrid(recordInfoGrid(view, qrToken)),
+    new Paragraph({ spacing: { after: 160 } }),
+    sectionHeading("Medical Information"),
+    medicalTable(recordMedicalColumns(view)),
   ];
 
-  for (const section of recordSections(view)) {
-    body.push(sectionHeading(section.heading));
-    for (const field of section.fields) body.push(...fieldBlock(field));
+  const notes = recordNotes(view);
+  if (notes) {
+    body.push(sectionHeading("Additional Notes"));
+    body.push(
+      new Paragraph({
+        spacing: { after: 120 },
+        children: [new TextRun({ text: notes, size: 21, color: INK })],
+      }),
+    );
   }
+
+  body.push(sectionHeading("Emergency Contact"));
+  body.push(contactsTable(recordContacts(view)));
 
   const doc = new Document({
     creator: "Beacon",
-    title: "Beacon Emergency Medical Record",
+    title: "Beacon Health Passport",
     sections: [
       {
         properties: { page: { margin: { top: 720, bottom: 720, left: 720, right: 720 } } },
@@ -108,206 +116,243 @@ export async function renderRecordDocx({
   return new Uint8Array(buffer);
 }
 
-/**
- * Teal full-width brand band, rendered in the document body (not the Word
- * header region, which Word dims in edit view). Wordmark + subtitle on the
- * left, QR on a white card on the right — mirroring the PDF header.
- */
-function brandBand(qrPngDataUrl?: string): (Table | Paragraph)[] {
+/** Branded header: logo + wordmark on the left, QR on the right. */
+function headerBand(qrPngDataUrl?: string): Table {
   const qr = qrImage(qrPngDataUrl);
 
-  const bandBorders = {
-    ...NO_BORDERS,
-    bottom: { style: BorderStyle.SINGLE, size: 18, color: TEAL_500 },
-  };
-
-  const wordmark = new TableCell({
-    shading: { type: ShadingType.CLEAR, fill: TEAL_700, color: "auto" },
-    margins: { top: 200, bottom: 200, left: 240, right: 120 },
+  const brandCell = new TableCell({
+    width: { size: 70, type: WidthType.PERCENTAGE },
+    borders: NO_BORDERS,
     verticalAlign: VerticalAlign.CENTER,
-    borders: bandBorders,
     children: [
       new Paragraph({
         spacing: { after: 0 },
-        children: [new TextRun({ text: "BEACON", bold: true, size: 48, color: WHITE })],
-      }),
-      new Paragraph({
-        spacing: { before: 30, after: 20 },
         children: [
-          new TextRun({
-            text: "EMERGENCY MEDICAL RECORD",
-            bold: true,
-            size: 16,
-            color: TEAL_200,
-            characterSpacing: 30,
-          }),
+          new TextRun({ text: "✚ ", bold: true, size: 28, color: TEAL_600 }),
+          new TextRun({ text: "Beacon", bold: true, size: 32, color: TEAL_700 }),
         ],
       }),
       new Paragraph({
         children: [
-          new TextRun({ text: "Digital Health Passport", size: 15, color: TEAL_200 }),
+          new TextRun({
+            text: "DIGITAL HEALTH PASSPORT",
+            bold: true,
+            size: 13,
+            color: FAINT,
+            characterSpacing: 24,
+          }),
         ],
       }),
     ],
   });
 
   const qrCell = new TableCell({
-    shading: { type: ShadingType.CLEAR, fill: TEAL_700, color: "auto" },
-    margins: { top: 200, bottom: 200, left: 120, right: 240 },
+    width: { size: 30, type: WidthType.PERCENTAGE },
+    borders: NO_BORDERS,
     verticalAlign: VerticalAlign.CENTER,
-    borders: bandBorders,
     children: [
-      new Paragraph({
-        alignment: AlignmentType.RIGHT,
-        children: qr ? [qr] : [],
-      }),
+      new Paragraph({ alignment: AlignmentType.RIGHT, children: qr ? [qr] : [] }),
     ],
   });
 
-  return [
-    new Table({
-      width: FULL,
-      borders: NO_BORDERS,
-      columnWidths: [6800, 2800],
-      rows: [new TableRow({ children: [wordmark, qrCell] })],
-    }),
-    new Paragraph({ spacing: { after: 160 } }),
-  ];
+  return new Table({
+    width: FULL,
+    borders: NO_BORDERS,
+    columnWidths: [6700, 2900],
+    rows: [new TableRow({ children: [brandCell, qrCell] })],
+  });
 }
 
-/** Decode the QR data URL into a docx ImageRun on a white backing card. */
+/** Decode the QR data URL into a docx ImageRun. */
 function qrImage(qrPngDataUrl?: string): ImageRun | null {
   if (!qrPngDataUrl) return null;
   const base64 = qrPngDataUrl.split(",")[1];
   if (!base64) return null;
   try {
     const data = Uint8Array.from(Buffer.from(base64, "base64"));
-    return new ImageRun({
-      data,
-      type: "png",
-      transformation: { width: 84, height: 84 },
-    });
+    return new ImageRun({ data, type: "png", transformation: { width: 88, height: 88 } });
   } catch {
     return null;
   }
 }
 
-/** Two emphasis cells: blood group (teal) and allergies (red when present). */
-function criticalRow(view: EmergencyView): Table {
-  const { bloodGroup, allergies } = recordCritical(view);
-  const crit = Boolean(allergies.critical);
+/** Two-column key/value identity grid. */
+function infoGrid(fields: InfoField[]): Table {
+  const rows: TableRow[] = [];
+  for (let i = 0; i < fields.length; i += 2) {
+    rows.push(
+      new TableRow({
+        children: [infoCell(fields[i]), infoCell(fields[i + 1])],
+      }),
+    );
+  }
+  return new Table({ width: FULL, borders: NO_BORDERS, columnWidths: [4800, 4800], rows });
+}
 
-  const cell = (
-    widthPct: number,
-    fill: string,
-    borderColor: string,
-    label: string,
-    labelColor: string,
-    value: string,
-    valueColor: string,
-    valueSize: number,
-  ) =>
-    new TableCell({
-      width: { size: widthPct, type: WidthType.PERCENTAGE },
-      shading: { type: ShadingType.CLEAR, fill, color: "auto" },
-      margins: { top: 120, bottom: 120, left: 160, right: 160 },
-      verticalAlign: VerticalAlign.CENTER,
+function infoCell(field?: InfoField): TableCell {
+  return new TableCell({
+    width: { size: 50, type: WidthType.PERCENTAGE },
+    borders: NO_BORDERS,
+    margins: { top: 60, bottom: 120, left: 0, right: 160 },
+    children: field
+      ? [
+          new Paragraph({
+            spacing: { after: 10 },
+            children: [
+              new TextRun({
+                text: field.label.toUpperCase(),
+                bold: true,
+                size: 13,
+                color: FAINT,
+                characterSpacing: 16,
+              }),
+            ],
+          }),
+          new Paragraph({
+            children: [new TextRun({ text: field.value, bold: true, size: 22, color: INK })],
+          }),
+        ]
+      : [new Paragraph({})],
+  });
+}
+
+/** Three-column medical table: Allergies / Medications / Conditions. */
+function medicalTable(columns: MedicalColumn[]): Table {
+  const cells = columns.map((c) => {
+    const head = c.critical ? CRIT : TEAL_700;
+    const itemColor = c.empty ? MUTED : c.critical ? CRIT : INK;
+    return new TableCell({
+      width: { size: Math.floor(100 / columns.length), type: WidthType.PERCENTAGE },
+      margins: { top: 80, bottom: 80, left: 60, right: 120 },
       borders: {
-        top: { style: BorderStyle.SINGLE, size: 6, color: borderColor },
-        bottom: { style: BorderStyle.SINGLE, size: 6, color: borderColor },
-        left: { style: BorderStyle.SINGLE, size: 6, color: borderColor },
-        right: { style: BorderStyle.SINGLE, size: 6, color: borderColor },
+        ...NO_BORDERS,
+        bottom: { style: BorderStyle.SINGLE, size: 6, color: BORDER },
       },
       children: [
         new Paragraph({
-          spacing: { after: 40 },
+          spacing: { after: 80 },
+          border: { bottom: { style: BorderStyle.SINGLE, size: 4, color: BORDER, space: 3 } },
           children: [
-            new TextRun({ text: label, bold: true, size: 15, color: labelColor, characterSpacing: 20 }),
+            new TextRun({
+              text: c.heading.toUpperCase(),
+              bold: true,
+              size: 15,
+              color: head,
+              characterSpacing: 16,
+            }),
           ],
         }),
-        new Paragraph({
-          children: [new TextRun({ text: value, bold: true, size: valueSize, color: valueColor })],
-        }),
+        ...c.items.map(
+          (item) =>
+            new Paragraph({
+              spacing: { after: 40 },
+              bullet: { level: 0 },
+              children: [new TextRun({ text: item, size: 20, color: itemColor })],
+            }),
+        ),
       ],
     });
+  });
 
   return new Table({
     width: FULL,
-    columnWidths: [3000, 6600],
-    rows: [
+    borders: NO_BORDERS,
+    rows: [new TableRow({ children: cells })],
+  });
+}
+
+/** Name / Phone contacts table with a shaded header row. */
+function contactsTable(rows: ContactRow[]): Table {
+  const headerRow = new TableRow({
+    tableHeader: true,
+    children: ["NAME", "PHONE"].map(
+      (h) =>
+        new TableCell({
+          shading: { type: ShadingType.CLEAR, fill: "F4F6F6", color: "auto" },
+          margins: { top: 60, bottom: 60, left: 120, right: 120 },
+          borders: cellBorders(),
+          children: [
+            new Paragraph({
+              children: [
+                new TextRun({ text: h, bold: true, size: 14, color: FAINT, characterSpacing: 16 }),
+              ],
+            }),
+          ],
+        }),
+    ),
+  });
+
+  const dataRows = rows.map(
+    (r) =>
       new TableRow({
         children: [
-          cell(30, TEAL_50, TEAL_200, "BLOOD GROUP", TEAL_700, bloodGroup, TEAL_800, 40),
-          cell(
-            70,
-            crit ? CRIT_BG : TEAL_50,
-            crit ? CRIT_BORDER : BORDER,
-            "ALLERGIES",
-            crit ? CRIT : MUTED,
-            allergies.value,
-            crit ? CRIT : MUTED,
-            24,
-          ),
+          new TableCell({
+            margins: { top: 80, bottom: 80, left: 120, right: 120 },
+            borders: cellBorders(),
+            children: [
+              new Paragraph({
+                children: [new TextRun({ text: r.name, bold: true, size: 21, color: INK })],
+              }),
+              new Paragraph({
+                children: [new TextRun({ text: r.label, size: 16, color: MUTED })],
+              }),
+            ],
+          }),
+          new TableCell({
+            margins: { top: 80, bottom: 80, left: 120, right: 120 },
+            verticalAlign: VerticalAlign.CENTER,
+            borders: cellBorders(),
+            children: [
+              new Paragraph({
+                children: [new TextRun({ text: r.phone, size: 21, color: INK })],
+              }),
+            ],
+          }),
         ],
       }),
-    ],
+  );
+
+  return new Table({
+    width: FULL,
+    columnWidths: [6000, 3600],
+    rows: [headerRow, ...dataRows],
   });
+}
+
+function cellBorders() {
+  const b = { style: BorderStyle.SINGLE, size: 4, color: BORDER } as const;
+  return { top: b, bottom: b, left: b, right: b };
 }
 
 function sectionHeading(text: string): Paragraph {
   return new Paragraph({
-    spacing: { before: 200, after: 100 },
-    border: { bottom: { style: BorderStyle.SINGLE, size: 6, color: BORDER, space: 4 } },
-    children: [
-      new TextRun({
-        text: text.toUpperCase(),
-        bold: true,
-        size: 18,
-        color: TEAL_700,
-        characterSpacing: 20,
-      }),
-    ],
+    spacing: { before: 200, after: 120 },
+    border: { bottom: { style: BorderStyle.SINGLE, size: 12, color: TEAL_500, space: 6 } },
+    children: [new TextRun({ text, bold: true, size: 22, color: INK })],
   });
 }
 
-function fieldBlock(field: RecordField): Paragraph[] {
-  return [
-    new Paragraph({
-      spacing: { before: 60, after: 10 },
-      children: [
-        new TextRun({
-          text: field.label.toUpperCase(),
-          bold: true,
-          size: 15,
-          color: FAINT,
-          characterSpacing: 15,
-        }),
-      ],
-    }),
-    new Paragraph({
-      spacing: { after: 80 },
-      children: [
-        new TextRun({
-          text: field.value || "—",
-          size: 22,
-          color: field.empty ? MUTED : INK,
-        }),
-      ],
-    }),
-  ];
+function divider(): Paragraph {
+  return new Paragraph({
+    spacing: { before: 60, after: 0 },
+    border: { bottom: { style: BorderStyle.SINGLE, size: 6, color: BORDER, space: 1 } },
+    children: [],
+  });
 }
 
 function pageFooter(generatedFor: string): Footer {
-  const stamp = `Generated ${new Date().toLocaleString()}  ·  ${generatedFor}`;
+  const stamp = `Generated by ${generatedFor}  ·  ${new Date().toLocaleString()}`;
   return new Footer({
     children: [
       new Paragraph({
-        border: { top: { style: BorderStyle.SINGLE, size: 6, color: BORDER, space: 4 } },
-        spacing: { before: 60, after: 20 },
+        alignment: AlignmentType.CENTER,
+        border: { top: { style: BorderStyle.SINGLE, size: 6, color: BORDER, space: 6 } },
+        spacing: { before: 80, after: 30 },
         children: [new TextRun({ text: CONFIDENTIALITY_NOTICE, size: 14, color: FAINT })],
       }),
       new Paragraph({
-        children: [new TextRun({ text: stamp, size: 14, color: MUTED })],
+        alignment: AlignmentType.CENTER,
+        children: [new TextRun({ text: stamp, size: 13, color: MUTED })],
       }),
     ],
   });

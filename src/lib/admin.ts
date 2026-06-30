@@ -33,6 +33,7 @@ export interface AdminRecordView {
   view: EmergencyView;
   nationalId: string;
   patientEmail: string | null;
+  qrToken: string;
 }
 
 /**
@@ -84,5 +85,5 @@ export async function adminReadRecord(opts: {
 
   const view = await buildEmergencyView(mp, prof?.full_name ?? null);
   const nationalId = await decryptField(mp.national_id);
-  return { patientId: mp.id, view, nationalId, patientEmail: null };
+  return { patientId: mp.id, view, nationalId, patientEmail: null, qrToken: mp.qr_token };
 }

@@ -35,6 +35,7 @@ export async function recordDownloadResponse(
           view: input.view,
           generatedFor: input.generatedFor,
           qrPngDataUrl: input.qrPngDataUrl,
+          qrToken: input.qrToken,
         })
       : await renderRecordPdf(input);
 

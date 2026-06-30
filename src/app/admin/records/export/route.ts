@@ -2,6 +2,7 @@ import { requireAdmin } from "@/lib/admin-guard";
 import { adminReadRecord, logAdminAction } from "@/lib/admin";
 import { getCurrentProfile } from "@/lib/auth";
 import { exportFormat, recordDownloadResponse } from "@/lib/export-format";
+import { qrDataUrl } from "@/lib/qr";
 
 /**
  * Admin record export (WS3). Re-derives the record via adminReadRecord using
@@ -28,7 +29,7 @@ export async function GET(request: Request) {
   const adminName = ctx?.profile.full_name ?? ctx?.user.email ?? null;
 
   try {
-    const { view } = await adminReadRecord({
+    const { view, qrToken } = await adminReadRecord({
       patientId,
       reason,
       adminId: adminUser.id,
@@ -42,6 +43,8 @@ export async function GET(request: Request) {
     });
     return recordDownloadResponse(exportFormat(request.url), {
       view,
+      qrPngDataUrl: await qrDataUrl(qrToken),
+      qrToken,
       generatedFor: "Admin export",
     });
   } catch (e) {

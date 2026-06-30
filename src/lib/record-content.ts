@@ -5,129 +5,147 @@ import type { EmergencyView } from "@/lib/emergency";
  * Single source of truth for the *content* of an exported record, shared by the
  * PDF (`pdf.ts`) and Word (`docx.ts`) renderers so both stay in lockstep. Only
  * the presentation layer differs between formats — the labels, order, and
- * "criticality" of each field live here.
+ * "criticality" of each field live here. Layout follows an ID-card style:
+ * an info grid up top, a 3-column medical table, then contacts.
  */
 
-export interface RecordField {
+export interface InfoField {
   label: string;
   value: string;
-  /** Critical fields (allergies present) get loud, alert-styled treatment. */
-  critical?: boolean;
-  /** Whether this field carries real data vs. a reassuring "none on file". */
-  empty?: boolean;
 }
 
-export interface RecordSection {
+export interface MedicalColumn {
   heading: string;
-  fields: RecordField[];
+  items: string[];
+  empty: boolean;
+  critical?: boolean;
 }
 
-function contactLine(c: {
-  name: string | null;
-  phone: string | null;
-  relationship?: string | null;
-}): string {
-  if (!c.name && !c.phone) return "None on file";
-  const who = [c.name, c.relationship ? `(${c.relationship})` : null]
-    .filter(Boolean)
-    .join(" ");
-  return [who, c.phone].filter(Boolean).join(" · ");
-}
-
-/** The headline triage facts — name + the at-a-glance identity meta line. */
-export function recordIdentity(view: EmergencyView): {
+export interface ContactRow {
+  label: string;
   name: string;
-  meta: string;
-} {
-  const donor =
-    view.organ_donor === true
-      ? "Organ donor"
-      : view.organ_donor === false
-        ? "Not an organ donor"
-        : null;
-  const meta = [view.date_of_birth, view.sex, donor]
-    .filter(Boolean)
-    .join("  ·  ");
-  return {
-    name: view.patient_name || "Beacon patient",
-    meta: meta || "No demographic details on file",
-  };
+  phone: string;
 }
 
-/** The two loudest cards: blood group and allergies. */
+/** A short, human-presentable record reference derived from the QR token. */
+export function recordId(qrToken?: string): string {
+  if (!qrToken) return "BEACON-RECORD";
+  return `BEACON-${qrToken.replace(/-/g, "").slice(0, 8).toUpperCase()}`;
+}
+
+/** The top "ID card" grid: who, when, and the two facts that matter most. */
+export function recordInfoGrid(
+  view: EmergencyView,
+  qrToken?: string,
+): InfoField[] {
+  const { bloodGroup } = recordCritical(view);
+  return [
+    { label: "Patient ID", value: recordId(qrToken) },
+    { label: "Full Name", value: view.patient_name || "Beacon patient" },
+    { label: "Date of Birth", value: view.date_of_birth || "—" },
+    { label: "Gender", value: formatSex(view.sex) },
+    { label: "Blood Group", value: bloodGroup },
+    {
+      label: "Generated On",
+      value: new Date().toLocaleDateString(undefined, {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      }),
+    },
+  ];
+}
+
+function formatSex(sex: EmergencyView["sex"]): string {
+  if (!sex) return "—";
+  return sex.charAt(0).toUpperCase() + sex.slice(1);
+}
+
+/** Blood group + whether allergies are present (drives red emphasis). */
 export function recordCritical(view: EmergencyView): {
   bloodGroup: string;
-  allergies: RecordField;
+  hasAllergies: boolean;
 } {
-  const hasAllergies = Boolean(view.allergies?.trim());
   return {
     bloodGroup:
       !view.blood_group || view.blood_group === "unknown"
         ? "Unknown"
         : view.blood_group,
-    allergies: {
-      label: "Allergies",
-      value: hasAllergies ? view.allergies : "No known allergies on file",
-      critical: hasAllergies,
-      empty: !hasAllergies,
-    },
+    hasAllergies: Boolean(view.allergies?.trim()),
   };
 }
 
-/** The body sections, in display order, shared across formats. */
-export function recordSections(view: EmergencyView): RecordSection[] {
-  const sections: RecordSection[] = [
+/** Split a free-text field into bullet items (newline-, then comma-, separated). */
+function bulletize(text: string | null | undefined): string[] {
+  const trimmed = (text ?? "").trim();
+  if (!trimmed) return [];
+  const lines = trimmed.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+  const parts = lines.length > 1 ? lines : trimmed.split(/,\s*/);
+  return parts.map((p) => p.trim()).filter(Boolean);
+}
+
+/** The 3-column medical table: Allergies / Medications / Conditions. */
+export function recordMedicalColumns(view: EmergencyView): MedicalColumn[] {
+  const allergies = bulletize(view.allergies);
+  const medications = bulletize(view.medications);
+  const conditions = bulletize(view.medical_conditions);
+  return [
     {
-      heading: "Clinical",
-      fields: [
-        {
-          label: "Current medications",
-          value: view.medications?.trim() || "None on file",
-          empty: !view.medications?.trim(),
-        },
-        {
-          label: "Medical conditions",
-          value: view.medical_conditions?.trim() || "None on file",
-          empty: !view.medical_conditions?.trim(),
-        },
-      ],
+      heading: "Allergies",
+      items: allergies.length ? allergies : ["None on file"],
+      empty: allergies.length === 0,
+      critical: allergies.length > 0,
+    },
+    {
+      heading: "Medications",
+      items: medications.length ? medications : ["None on file"],
+      empty: medications.length === 0,
+    },
+    {
+      heading: "Conditions",
+      items: conditions.length ? conditions : ["None on file"],
+      empty: conditions.length === 0,
     },
   ];
+}
 
-  if (view.additional_notes?.trim()) {
-    sections.push({
-      heading: "Other notes",
-      fields: [{ label: "Notes", value: view.additional_notes.trim() }],
+/** Notes section — only present when the patient has written something. */
+export function recordNotes(view: EmergencyView): string | null {
+  return view.additional_notes?.trim() || null;
+}
+
+/** Emergency contacts + primary physician, in display order. */
+export function recordContacts(view: EmergencyView): ContactRow[] {
+  const rows: ContactRow[] = [];
+  const c1 = view.emergency_contact;
+  if (c1.name || c1.phone) {
+    rows.push({
+      label: c1.relationship ? `Emergency contact (${c1.relationship})` : "Emergency contact",
+      name: c1.name || "—",
+      phone: c1.phone || "—",
     });
   }
-
-  const contacts: RecordField[] = [
-    {
-      label: "Emergency contact",
-      value: contactLine(view.emergency_contact),
-      empty: !view.emergency_contact.name && !view.emergency_contact.phone,
-    },
-  ];
-  if (view.emergency_contact_2.name || view.emergency_contact_2.phone) {
-    contacts.push({
-      label: "Second contact",
-      value: contactLine(view.emergency_contact_2),
+  const c2 = view.emergency_contact_2;
+  if (c2.name || c2.phone) {
+    rows.push({
+      label: c2.relationship ? `Second contact (${c2.relationship})` : "Second contact",
+      name: c2.name || "—",
+      phone: c2.phone || "—",
     });
   }
   if (view.primary_physician.name || view.primary_physician.phone) {
-    contacts.push({
+    rows.push({
       label: "Primary doctor",
-      value: contactLine({
-        name: view.primary_physician.name,
-        phone: view.primary_physician.phone,
-      }),
+      name: view.primary_physician.name || "—",
+      phone: view.primary_physician.phone || "—",
     });
   }
-  sections.push({ heading: "Contacts", fields: contacts });
-
-  return sections;
+  if (rows.length === 0) {
+    rows.push({ label: "Emergency contact", name: "None on file", phone: "—" });
+  }
+  return rows;
 }
 
 /** Confidentiality line shown in the footer of every export. */
 export const CONFIDENTIALITY_NOTICE =
-  "Confidential medical record. Generated by Beacon for emergency use. Verify identity before relying on this information.";
+  "This document is digitally generated and encrypted. Present this QR code in an emergency to access your health information.";

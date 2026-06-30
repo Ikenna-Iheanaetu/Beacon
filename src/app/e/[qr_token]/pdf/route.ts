@@ -67,6 +67,7 @@ export async function GET(
   return recordDownloadResponse(format, {
     view,
     qrPngDataUrl: await qrDataUrl(mp.qr_token),
+    qrToken: mp.qr_token,
     generatedFor: `Downloaded by ${session.profile.full_name ?? "a verified doctor"}`,
   });
 }

@@ -31,6 +31,7 @@ export async function GET(request: Request) {
   return recordDownloadResponse(exportFormat(request.url), {
     view,
     qrPngDataUrl: await qrDataUrl(row.qr_token),
+    qrToken: row.qr_token,
     generatedFor: "Patient self-export",
   });
 }
