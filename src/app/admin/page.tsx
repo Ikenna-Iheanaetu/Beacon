@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { isAdmin } from "@/lib/admin-guard";
 import { createAdminClient } from "@/lib/supabase/admin";
+import type { ProviderStatus, UserRole } from "@/lib/database.types";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Brand } from "@/components/brand";
 import { SignOutButton } from "@/components/sign-out-button";
@@ -48,7 +49,9 @@ const LINKS = [
 /** Count rows in `profiles` matching an optional column=value filter. */
 async function countProfiles(
   admin: ReturnType<typeof createAdminClient>,
-  filter?: { column: "role" | "provider_status"; value: string },
+  filter?:
+    | { column: "role"; value: UserRole }
+    | { column: "provider_status"; value: ProviderStatus },
 ): Promise<number> {
   let query = admin
     .from("profiles")
