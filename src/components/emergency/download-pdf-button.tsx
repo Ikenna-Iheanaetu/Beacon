@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Download } from "lucide-react";
+import { Download, FileText, FileType } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
@@ -26,9 +26,12 @@ export function DownloadPdfButton({ token }: { token: string }) {
   const [reason, setReason] = useState("");
   const valid = reason.trim().length >= 10;
 
-  function download() {
+  function download(format: "pdf" | "docx") {
     if (!valid) return;
-    window.location.href = `/e/${token}/pdf?reason=${encodeURIComponent(reason.trim())}`;
+    const query = `reason=${encodeURIComponent(reason.trim())}${
+      format === "docx" ? "&format=docx" : ""
+    }`;
+    window.location.href = `/e/${token}/pdf?${query}`;
     setOpen(false);
   }
 
@@ -37,7 +40,7 @@ export function DownloadPdfButton({ token }: { token: string }) {
       <DialogTrigger asChild>
         <Button variant="outline" className="w-full">
           <Download />
-          Download record as PDF
+          Download record
         </Button>
       </DialogTrigger>
       <DialogContent>
@@ -65,9 +68,17 @@ export function DownloadPdfButton({ token }: { token: string }) {
           <DialogClose asChild>
             <Button variant="ghost">Cancel</Button>
           </DialogClose>
-          <Button onClick={download} disabled={!valid}>
-            <Download />
-            Download PDF
+          <Button
+            variant="outline"
+            onClick={() => download("docx")}
+            disabled={!valid}
+          >
+            <FileType />
+            Word
+          </Button>
+          <Button onClick={() => download("pdf")} disabled={!valid}>
+            <FileText />
+            PDF
           </Button>
         </DialogFooter>
       </DialogContent>

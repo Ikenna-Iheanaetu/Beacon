@@ -2,8 +2,8 @@ import { type NextRequest } from "next/server";
 import { getCurrentProfile, isApprovedProvider } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { buildEmergencyView } from "@/lib/emergency";
-import { renderRecordPdf } from "@/lib/pdf";
 import { qrDataUrl } from "@/lib/qr";
+import { exportFormat, recordDownloadResponse } from "@/lib/export-format";
 
 /**
  * Doctor PDF download from the scanned emergency view (BUILD_SPEC Phase 2).
@@ -51,6 +51,9 @@ export async function GET(
     .maybeSingle();
   const view = await buildEmergencyView(mp, prof?.full_name ?? null);
 
+  const format = exportFormat(req.url);
+  const formatLabel = format === "docx" ? "Word document" : "PDF";
+
   // Audit — patient-visible, with the doctor's reason.
   await admin.from("access_logs").insert({
     accessor_id: session.user.id,
@@ -58,23 +61,12 @@ export async function GET(
     access_type: "pdf_export",
     accessor_name: session.profile.full_name,
     accessor_email: session.user.email ?? null,
-    note: `Downloaded record as PDF — ${reason}`,
+    note: `Downloaded record as ${formatLabel} — ${reason}`,
   });
 
-  const pdf = await renderRecordPdf({
+  return recordDownloadResponse(format, {
     view,
     qrPngDataUrl: await qrDataUrl(mp.qr_token),
     generatedFor: `Downloaded by ${session.profile.full_name ?? "a verified doctor"}`,
-  });
-
-  // Copy into a fresh ArrayBuffer-backed view so the body is a valid BodyInit
-  // (pdf-lib returns Uint8Array<ArrayBufferLike>, which TS rejects directly).
-  const buffer = new ArrayBuffer(pdf.byteLength);
-  new Uint8Array(buffer).set(pdf);
-  return new Response(buffer, {
-    headers: {
-      "Content-Type": "application/pdf",
-      "Content-Disposition": 'attachment; filename="beacon-record.pdf"',
-    },
   });
 }

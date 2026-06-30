@@ -2,7 +2,7 @@
 
 import { useActionState, useEffect, useRef, useState } from "react";
 import { useFormStatus } from "react-dom";
-import { Download, FileText, Mail } from "lucide-react";
+import { Download, FileText, FileType, Mail } from "lucide-react";
 import { toast } from "sonner";
 import { emailOwnRecord } from "@/app/(patient)/qr/actions";
 import type { RegenerateState } from "@/app/(patient)/qr/actions";
@@ -70,7 +70,14 @@ export function RecordExport() {
         <Button asChild variant="default">
           <a href="/qr/export" download="beacon-record.pdf">
             <Download />
-            Download record (PDF)
+            Download PDF
+          </a>
+        </Button>
+
+        <Button asChild variant="outline">
+          <a href="/qr/export?format=docx" download="beacon-record.docx">
+            <FileType />
+            Download Word
           </a>
         </Button>
 

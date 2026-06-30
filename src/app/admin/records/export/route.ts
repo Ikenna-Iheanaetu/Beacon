@@ -1,12 +1,13 @@
 import { requireAdmin } from "@/lib/admin-guard";
 import { adminReadRecord, logAdminAction } from "@/lib/admin";
 import { getCurrentProfile } from "@/lib/auth";
-import { renderRecordPdf } from "@/lib/pdf";
+import { exportFormat, recordDownloadResponse } from "@/lib/export-format";
 
 /**
  * Admin record export (WS3). Re-derives the record via adminReadRecord using
  * the patientId + reason query params (which re-enforces the reason guard and
- * logs the read), then logs a separate pdf_export action and streams the PDF.
+ * logs the read), then logs a separate pdf_export action and streams the chosen
+ * format (PDF, or Word via `?format=docx`).
  */
 export async function GET(request: Request) {
   let adminUser;
@@ -39,13 +40,9 @@ export async function GET(request: Request) {
       patientId,
       reason,
     });
-    const pdf = await renderRecordPdf({ view, generatedFor: "Admin export" });
-
-    return new Response(new Blob([pdf as BlobPart]), {
-      headers: {
-        "Content-Type": "application/pdf",
-        "Content-Disposition": 'attachment; filename="beacon-record.pdf"',
-      },
+    return recordDownloadResponse(exportFormat(request.url), {
+      view,
+      generatedFor: "Admin export",
     });
   } catch (e) {
     const message = e instanceof Error ? e.message : "Export failed";

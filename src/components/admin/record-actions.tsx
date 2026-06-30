@@ -2,7 +2,7 @@
 
 import { useActionState, useEffect, useId, useState } from "react";
 import { useFormStatus } from "react-dom";
-import { Download, Mail, Search, UserRound } from "lucide-react";
+import { FileText, FileType, Mail, Search, UserRound } from "lucide-react";
 import { toast } from "sonner";
 import {
   emailRecord,
@@ -83,8 +83,15 @@ export function RecordActions({
     <div className="flex flex-wrap items-center gap-3">
       <Button asChild variant="outline">
         <a href={exportHref} target="_blank" rel="noopener noreferrer">
-          <Download className="size-4" />
+          <FileText className="size-4" />
           Export PDF
+        </a>
+      </Button>
+
+      <Button asChild variant="outline">
+        <a href={`${exportHref}&format=docx`} target="_blank" rel="noopener noreferrer">
+          <FileType className="size-4" />
+          Export Word
         </a>
       </Button>
 
