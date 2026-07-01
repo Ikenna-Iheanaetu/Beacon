@@ -27,6 +27,8 @@ const ACTION_LABELS: Record<AdminActionType, string> = {
   email_send: "Email sent",
   provider_approve: "Provider approved",
   provider_reject: "Provider rejected",
+  institution_approve: "Facility approved",
+  institution_reject: "Facility rejected",
 };
 
 const ACTION_VARIANTS: Record<AdminActionType, BadgeProps["variant"]> = {
@@ -35,6 +37,8 @@ const ACTION_VARIANTS: Record<AdminActionType, BadgeProps["variant"]> = {
   email_send: "caution",
   provider_approve: "safe",
   provider_reject: "critical",
+  institution_approve: "safe",
+  institution_reject: "critical",
 };
 
 function formatWhen(iso: string): string {

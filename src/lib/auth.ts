@@ -34,7 +34,12 @@ export async function getCurrentProfile(): Promise<
   // (e.g. the account predates the migration), provision it now from signup
   // metadata. The profiles INSERT policy allows a user to create their own row.
   const meta = user.user_metadata ?? {};
-  const role = meta.role === "provider" ? "provider" : "patient";
+  const role =
+    meta.role === "provider"
+      ? "provider"
+      : meta.role === "institution"
+        ? "institution"
+        : "patient";
   const { data: created } = await supabase
     .from("profiles")
     .upsert(

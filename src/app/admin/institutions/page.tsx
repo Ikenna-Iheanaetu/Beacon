@@ -1,10 +1,10 @@
-import { ExternalLink, ShieldAlert, ShieldCheck } from "lucide-react";
+import { Building2, ExternalLink, ShieldAlert } from "lucide-react";
 import { isAdmin } from "@/lib/admin-guard";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { signedLicenseUrl } from "@/lib/storage";
-import type { LicenseCheck } from "@/lib/verification";
-import type { ProviderVerificationRow } from "@/lib/database.types";
-import { practitionerTypeLabel } from "@/lib/roles";
+import { signedInstitutionUrl } from "@/lib/storage";
+import type { FacilityCheck } from "@/lib/verification";
+import type { InstitutionRow } from "@/lib/database.types";
+import { FACILITY_TYPES } from "@/lib/validation";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -16,20 +16,22 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { VerificationReview } from "@/components/admin/verification-review";
+import { InstitutionReview } from "@/components/admin/institution-review";
 
 export const dynamic = "force-dynamic";
 
 export const metadata = {
-  title: "Practitioner verifications",
+  title: "Facility verifications",
   robots: { index: false, follow: false },
 };
+
+const FACILITY_LABEL = new Map(FACILITY_TYPES.map((f) => [f.value, f.label]));
 
 function checkSummary(result: unknown): {
   label: string;
   variant: "safe" | "caution" | "muted";
 } {
-  const r = result as Partial<LicenseCheck> | null;
+  const r = result as Partial<FacilityCheck> | null;
   if (!r || typeof r !== "object") {
     return { label: "No check on file", variant: "muted" };
   }
@@ -40,7 +42,7 @@ function checkSummary(result: unknown): {
   return { label: "Invalid format", variant: "caution" };
 }
 
-export default async function AdminVerificationsPage() {
+export default async function AdminInstitutionsPage() {
   if (!(await isAdmin())) {
     return (
       <main className="flex min-h-dvh items-center justify-center px-4">
@@ -60,87 +62,98 @@ export default async function AdminVerificationsPage() {
   const admin = createAdminClient();
 
   const { data: pending } = await admin
-    .from("provider_verifications")
+    .from("institutions")
     .select("*")
     .eq("status", "pending")
     .order("created_at", { ascending: true });
 
-  const verifications = (pending ?? []) as ProviderVerificationRow[];
+  const institutions = (pending ?? []) as InstitutionRow[];
 
-  // Names from profiles; emails from auth.users.
-  const ids = verifications.map((v) => v.provider_id);
-  const { data: profs } = ids.length
-    ? await admin.from("profiles").select("id, full_name").in("id", ids)
-    : { data: [] as { id: string; full_name: string | null }[] };
-  const nameById = new Map((profs ?? []).map((p) => [p.id, p.full_name]));
-
+  // Owner emails from auth.users.
   const { data: userList } = await admin.auth.admin.listUsers({ perPage: 1000 });
   const emailById = new Map(userList?.users.map((u) => [u.id, u.email ?? ""]));
 
-  // Short-lived signed URLs to each uploaded document.
+  // Short-lived signed URLs to each registration document.
   const docUrls = new Map<string, string | null>();
   await Promise.all(
-    verifications.map(async (v) => {
-      if (v.license_document_path) {
-        docUrls.set(v.id, await signedLicenseUrl(v.license_document_path));
+    institutions.map(async (i) => {
+      if (i.registration_document_path) {
+        docUrls.set(i.id, await signedInstitutionUrl(i.registration_document_path));
       }
     }),
   );
 
   return (
-    <main className="mx-auto w-full max-w-4xl px-4 py-10">
+    <main className="mx-auto w-full max-w-5xl px-4 py-10">
       <header className="beacon-rise mb-7">
         <span className="data-label text-primary-400">Administration</span>
         <h1 className="font-display mt-1 flex items-center gap-2 text-3xl font-semibold tracking-tight text-foreground">
-          <ShieldCheck className="size-7 text-primary" />
-          Practitioner verifications
+          <Building2 className="size-7 text-primary" />
+          Facility verifications
         </h1>
         <p className="mt-1.5 text-sm text-muted-foreground">
-          Review each doctor&apos;s or nurse&apos;s council license and document
-          before approving access to emergency records.
+          Review each facility&apos;s registration (NHFR, State MoH / HEFAMAA,
+          CAC, and Medical Director) before trusting the institution.
         </p>
       </header>
 
       <Card>
         <CardHeader>
-          <CardTitle>Pending verifications</CardTitle>
+          <CardTitle>Pending facilities</CardTitle>
         </CardHeader>
         <CardContent className="p-0">
-          {verifications.length === 0 ? (
+          {institutions.length === 0 ? (
             <p className="px-6 py-8 text-center text-sm text-muted-foreground">
-              No licenses are waiting for review.
+              No facilities are waiting for review.
             </p>
           ) : (
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Practitioner</TableHead>
-                  <TableHead>Type</TableHead>
-                  <TableHead>License</TableHead>
+                  <TableHead>Facility</TableHead>
+                  <TableHead>Registry IDs</TableHead>
+                  <TableHead>Medical Director</TableHead>
                   <TableHead>Check</TableHead>
                   <TableHead>Document</TableHead>
                   <TableHead className="text-right">Action</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {verifications.map((v) => {
-                  const summary = checkSummary(v.verify_check_result);
-                  const url = docUrls.get(v.id) ?? null;
-                  const name = nameById.get(v.provider_id) ?? "Practitioner";
+                {institutions.map((i) => {
+                  const summary = checkSummary(i.verify_check_result);
+                  const url = docUrls.get(i.id) ?? null;
                   return (
-                    <TableRow key={v.id}>
+                    <TableRow key={i.id}>
                       <TableCell>
-                        <div className="font-medium">{name}</div>
+                        <div className="font-medium">{i.name}</div>
+                        <div className="text-sm text-muted-foreground">
+                          {FACILITY_LABEL.get(i.facility_type) ?? i.facility_type}
+                        </div>
                         <div className="tabular text-sm text-muted-foreground">
-                          {emailById.get(v.provider_id) ?? "—"}
+                          {emailById.get(i.owner_id) ?? "—"}
+                        </div>
+                      </TableCell>
+                      <TableCell className="tabular text-sm">
+                        <div className="flex flex-col gap-0.5">
+                          {i.nhfr_code && <span>NHFR: {i.nhfr_code}</span>}
+                          {i.state_moh_reg_no && (
+                            <span>MoH: {i.state_moh_reg_no}</span>
+                          )}
+                          {i.cac_rc_number && <span>CAC: {i.cac_rc_number}</span>}
+                          {!i.nhfr_code &&
+                            !i.state_moh_reg_no &&
+                            !i.cac_rc_number && (
+                              <span className="text-muted-foreground">—</span>
+                            )}
                         </div>
                       </TableCell>
                       <TableCell className="text-sm">
-                        <div>{practitionerTypeLabel(v.practitioner_type)}</div>
-                        <div className="text-muted-foreground">{v.council}</div>
-                      </TableCell>
-                      <TableCell className="tabular">
-                        {v.license_number}
+                        <div className="font-medium">
+                          {i.medical_director_name ?? "—"}
+                        </div>
+                        <div className="tabular text-muted-foreground">
+                          {i.medical_director_mdcn ?? "—"}
+                        </div>
                       </TableCell>
                       <TableCell>
                         <Badge variant={summary.variant}>{summary.label}</Badge>
@@ -163,10 +176,7 @@ export default async function AdminVerificationsPage() {
                         )}
                       </TableCell>
                       <TableCell className="text-right">
-                        <VerificationReview
-                          providerId={v.provider_id}
-                          name={name}
-                        />
+                        <InstitutionReview institutionId={i.id} name={i.name} />
                       </TableCell>
                     </TableRow>
                   );

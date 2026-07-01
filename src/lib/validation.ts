@@ -113,14 +113,104 @@ export type SignupInput = z.infer<typeof signupSchema>;
 
 // ── Phase 2 schemas ──────────────────────────────────────────────────────
 
-/** Doctor registration: signup + a license number. */
+/**
+ * Practitioner types a registering provider can choose, mapped to their
+ * Nigerian licensing council (doctors: MDCN, nurses/midwives: NMCN).
+ */
+export const PRACTITIONER_TYPES = [
+  { value: "doctor", label: "Doctor", council: "MDCN" },
+  { value: "nurse", label: "Nurse / Midwife", council: "NMCN" },
+] as const;
+
+export const PRACTITIONER_TYPE_VALUES = PRACTITIONER_TYPES.map(
+  (p) => p.value,
+) as ["doctor", "nurse"];
+
+export function councilFor(practitionerType: string): "MDCN" | "NMCN" {
+  return practitionerType === "nurse" ? "NMCN" : "MDCN";
+}
+
+/** Practitioner registration: signup + a license number (doctor or nurse). */
 export const doctorRegistrationSchema = signupSchema.extend({
+  practitioner_type: z.enum(PRACTITIONER_TYPE_VALUES).optional(),
   license_number: z
     .string()
     .trim()
     .regex(/^[A-Za-z0-9-]{4,32}$/, "Enter a valid license number"),
 });
 export type DoctorRegistrationInput = z.infer<typeof doctorRegistrationSchema>;
+
+/** Facility types a registering institution can choose. */
+export const FACILITY_TYPES = [
+  { value: "hospital", label: "Hospital" },
+  { value: "clinic", label: "Clinic" },
+  { value: "diagnostic", label: "Diagnostic centre" },
+  { value: "maternity", label: "Maternity home" },
+  { value: "pharmacy", label: "Pharmacy" },
+  { value: "other", label: "Other" },
+] as const;
+
+export const FACILITY_TYPE_VALUES = FACILITY_TYPES.map((f) => f.value) as [
+  "hospital",
+  "clinic",
+  "diagnostic",
+  "maternity",
+  "pharmacy",
+  "other",
+];
+
+/** Institution registration: signup + the facility's display name. */
+export const institutionRegistrationSchema = signupSchema.extend({
+  institution_name: z
+    .string()
+    .trim()
+    .min(2, "Enter the facility's name")
+    .max(160, "Please keep the name under 160 characters"),
+});
+export type InstitutionRegistrationInput = z.infer<
+  typeof institutionRegistrationSchema
+>;
+
+/**
+ * Facility verification details, modelled on Nigerian health-facility registries.
+ * Each identifier is optional individually but the action requires at least one
+ * registry number plus a document; formats match the real schemes.
+ */
+export const institutionVerificationSchema = z.object({
+  name: z.string().trim().min(2, "Enter the facility's name").max(160),
+  facility_type: z.enum(FACILITY_TYPE_VALUES),
+  // National Health Facility Registry code (FMoH) — alphanumerics, dashes, slashes.
+  nhfr_code: z
+    .string()
+    .trim()
+    .regex(/^[A-Za-z0-9/-]{3,40}$/, "Enter a valid NHFR code")
+    .optional()
+    .or(z.literal("")),
+  // State Ministry of Health / HEFAMAA registration number.
+  state_moh_reg_no: z
+    .string()
+    .trim()
+    .regex(/^[A-Za-z0-9/-]{3,40}$/, "Enter a valid registration number")
+    .optional()
+    .or(z.literal("")),
+  // Corporate Affairs Commission RC number (optional "RC" prefix).
+  cac_rc_number: z
+    .string()
+    .trim()
+    .regex(/^(RC)?\d{4,12}$/i, "Enter a valid CAC RC number")
+    .optional()
+    .or(z.literal("")),
+  medical_director_name: optionalName,
+  medical_director_mdcn: z
+    .string()
+    .trim()
+    .regex(/^[A-Za-z0-9-]{4,32}$/, "Enter a valid MDCN number")
+    .optional()
+    .or(z.literal("")),
+});
+export type InstitutionVerificationInput = z.infer<
+  typeof institutionVerificationSchema
+>;
 
 /** Required free-text reason for any privileged admin record access. */
 export const reasonSchema = z

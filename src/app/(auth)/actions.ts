@@ -13,12 +13,18 @@ export interface AuthState {
   sent?: boolean;
 }
 
-/** Sign up a patient or provider. Role comes from a hidden form field. */
+/** Sign up a patient, provider, or institution. Role comes from a hidden field. */
 export async function signUpAction(
   _prev: AuthState,
   formData: FormData,
 ): Promise<AuthState> {
-  const role = formData.get("role") === "provider" ? "provider" : "patient";
+  const rawRole = formData.get("role");
+  const role =
+    rawRole === "provider"
+      ? "provider"
+      : rawRole === "institution"
+        ? "institution"
+        : "patient";
 
   const parsed = signupSchema.safeParse({
     email: formData.get("email"),
@@ -29,10 +35,25 @@ export async function signUpAction(
     return { error: parsed.error.issues[0]?.message ?? "Check your details" };
   }
 
-  // Doctors capture a license number at signup; it's carried in metadata so the
-  // /provider/verify page can prefill it (the document upload happens there).
+  // Providers (doctors or nurses) capture a practitioner type + license number
+  // at signup; it's carried in metadata so the /provider/verify page can
+  // prefill it (the document upload happens there).
   const licenseNumber =
     role === "provider" ? String(formData.get("license_number") ?? "").trim() : "";
+  const practitionerType =
+    role === "provider"
+      ? formData.get("practitioner_type") === "nurse"
+        ? "nurse"
+        : "doctor"
+      : "";
+
+  // Institutions capture the facility's name at signup; it's carried in metadata
+  // so the /institution/verify page can prefill it (the document upload + registry
+  // identifiers happen there).
+  const institutionName =
+    role === "institution"
+      ? String(formData.get("institution_name") ?? "").trim()
+      : "";
 
   const supabase = await createClient();
   const { data, error } = await supabase.auth.signUp({
@@ -42,7 +63,10 @@ export async function signUpAction(
       data: {
         role,
         full_name: parsed.data.full_name,
-        ...(role === "provider" ? { license_number: licenseNumber } : {}),
+        ...(role === "provider"
+          ? { license_number: licenseNumber, practitioner_type: practitionerType }
+          : {}),
+        ...(role === "institution" ? { institution_name: institutionName } : {}),
       },
     },
   });
@@ -54,6 +78,11 @@ export async function signUpAction(
   // Provider self-registration always lands in the pending state.
   if (role === "provider") {
     redirect("/provider/pending");
+  }
+
+  // Institution self-registration lands on its dashboard to submit facility docs.
+  if (role === "institution") {
+    redirect("/institution");
   }
 
   // If email confirmation is on, there's no session yet.
@@ -109,7 +138,9 @@ export async function signInAction(
     .eq("id", user!.id)
     .maybeSingle();
 
-  redirect(profile?.role === "provider" ? "/provider" : "/dashboard");
+  if (profile?.role === "provider") redirect("/provider");
+  if (profile?.role === "institution") redirect("/institution");
+  redirect("/dashboard");
 }
 
 export async function signOutAction() {

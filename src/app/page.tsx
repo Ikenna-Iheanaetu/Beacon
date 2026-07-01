@@ -108,12 +108,23 @@ export default async function LandingPage() {
                   <Button asChild size="lg" variant="outline">
                     <Link href="/provider/signup">
                       <ShieldCheck />
-                      I&apos;m a doctor
+                      I&apos;m a doctor or nurse
                     </Link>
                   </Button>
                 </>
               )}
             </div>
+            {!session && (
+              <p className="mt-4 text-sm text-muted-foreground">
+                Represent a hospital or clinic?{" "}
+                <Link
+                  href="/institution/signup"
+                  className="font-medium text-primary hover:underline"
+                >
+                  Register your facility
+                </Link>
+              </p>
+            )}
             <p className="mt-6 text-sm text-muted-foreground">
               Free to set up · Encrypted end to end · You control every access
             </p>

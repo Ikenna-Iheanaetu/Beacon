@@ -9,6 +9,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 
 export const LICENSE_BUCKET = "license-docs";
 export const EXPORT_BUCKET = "record-exports";
+export const INSTITUTION_BUCKET = "institution-docs";
 
 /** Upload a doctor's license document. `path` should start with `<uid>/`. */
 export async function uploadLicenseDoc(
@@ -32,6 +33,32 @@ export async function signedLicenseUrl(
   const admin = createAdminClient();
   const { data } = await admin.storage
     .from(LICENSE_BUCKET)
+    .createSignedUrl(path, expiresInSec);
+  return data?.signedUrl ?? null;
+}
+
+/** Upload a facility's registration document. `path` should start with `<uid>/`. */
+export async function uploadInstitutionDoc(
+  path: string,
+  file: ArrayBuffer | Uint8Array,
+  contentType: string,
+): Promise<{ path: string }> {
+  const admin = createAdminClient();
+  const { error } = await admin.storage
+    .from(INSTITUTION_BUCKET)
+    .upload(path, file, { contentType, upsert: true });
+  if (error) throw new Error(`institution upload failed: ${error.message}`);
+  return { path };
+}
+
+/** Short-lived signed URL to view a facility registration document (admin review). */
+export async function signedInstitutionUrl(
+  path: string,
+  expiresInSec = 120,
+): Promise<string | null> {
+  const admin = createAdminClient();
+  const { data } = await admin.storage
+    .from(INSTITUTION_BUCKET)
     .createSignedUrl(path, expiresInSec);
   return data?.signedUrl ?? null;
 }

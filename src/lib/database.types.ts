@@ -6,15 +6,27 @@
  *   supabase gen types typescript --project-id <id> > src/lib/database.types.ts
  */
 
-export type UserRole = "patient" | "provider" | "admin";
+export type UserRole = "patient" | "provider" | "admin" | "institution";
 export type ProviderStatus = "none" | "pending" | "approved";
 export type VerificationStatus = "pending" | "verified" | "rejected";
+export type MembershipStatus = "pending" | "approved" | "rejected";
+export type PractitionerType = "doctor" | "nurse";
+export type Council = "MDCN" | "NMCN";
+export type FacilityType =
+  | "hospital"
+  | "clinic"
+  | "diagnostic"
+  | "maternity"
+  | "pharmacy"
+  | "other";
 export type AdminActionType =
   | "record_view"
   | "pdf_export"
   | "email_send"
   | "provider_approve"
-  | "provider_reject";
+  | "provider_reject"
+  | "institution_approve"
+  | "institution_reject";
 export type Sex =
   | "female"
   | "male"
@@ -96,6 +108,8 @@ export type ProviderVerificationRow = {
   notes: string | null;
   created_at: string;
   updated_at: string;
+  practitioner_type: PractitionerType;
+  council: Council;
 };
 
 export type AdminActionRow = {
@@ -106,6 +120,38 @@ export type AdminActionRow = {
   reason: string | null;
   metadata: unknown | null;
   created_at: string;
+};
+
+export type InstitutionRow = {
+  id: string;
+  owner_id: string;
+  name: string;
+  facility_type: FacilityType;
+  nhfr_code: string | null;
+  state_moh_reg_no: string | null;
+  cac_rc_number: string | null;
+  medical_director_name: string | null;
+  medical_director_mdcn: string | null;
+  registration_document_path: string | null;
+  status: VerificationStatus;
+  verify_check_result: unknown | null;
+  verified_by: string | null;
+  verified_at: string | null;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type InstitutionMemberRow = {
+  id: string;
+  institution_id: string;
+  member_id: string;
+  status: MembershipStatus;
+  role_title: string | null;
+  notes: string | null;
+  requested_at: string;
+  decided_by: string | null;
+  decided_at: string | null;
 };
 
 export interface Database {
@@ -149,6 +195,24 @@ export interface Database {
           created_at?: string;
         };
         Update: Partial<AdminActionRow>;
+        Relationships: [];
+      };
+      institutions: {
+        Row: InstitutionRow;
+        Insert: Partial<InstitutionRow> & {
+          owner_id: string;
+          name: string;
+        };
+        Update: Partial<InstitutionRow>;
+        Relationships: [];
+      };
+      institution_members: {
+        Row: InstitutionMemberRow;
+        Insert: Partial<InstitutionMemberRow> & {
+          institution_id: string;
+          member_id: string;
+        };
+        Update: Partial<InstitutionMemberRow>;
         Relationships: [];
       };
     };

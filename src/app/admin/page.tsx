@@ -1,6 +1,7 @@
 import Link from "next/link";
 import {
   ArrowRight,
+  Building2,
   Clock,
   FileSearch,
   ScrollText,
@@ -31,6 +32,13 @@ const LINKS = [
     icon: UserCheck,
     title: "Provider approvals",
     description: "Review and verify providers before they can open records.",
+  },
+  {
+    href: "/admin/institutions",
+    icon: Building2,
+    title: "Facility approvals",
+    description:
+      "Verify hospitals and clinics by their registration before trusting them.",
   },
   {
     href: "/admin/records",
@@ -79,12 +87,18 @@ export default async function AdminPage() {
   }
 
   const admin = createAdminClient();
-  const [totalUsers, doctors, patients, pending] = await Promise.all([
-    countProfiles(admin),
-    countProfiles(admin, { column: "role", value: "provider" }),
-    countProfiles(admin, { column: "role", value: "patient" }),
-    countProfiles(admin, { column: "provider_status", value: "pending" }),
-  ]);
+  const [totalUsers, doctors, patients, pending, pendingFacilities] =
+    await Promise.all([
+      countProfiles(admin),
+      countProfiles(admin, { column: "role", value: "provider" }),
+      countProfiles(admin, { column: "role", value: "patient" }),
+      countProfiles(admin, { column: "provider_status", value: "pending" }),
+      admin
+        .from("institutions")
+        .select("*", { count: "exact", head: true })
+        .eq("status", "pending")
+        .then(({ count }) => count ?? 0),
+    ]);
 
   const stats = [
     { label: "Total users", value: totalUsers, icon: Users },
@@ -95,6 +109,12 @@ export default async function AdminPage() {
       value: pending,
       icon: Clock,
       highlight: pending > 0,
+    },
+    {
+      label: "Pending facilities",
+      value: pendingFacilities,
+      icon: Building2,
+      highlight: pendingFacilities > 0,
     },
   ] as const;
 
@@ -121,7 +141,7 @@ export default async function AdminPage() {
           </p>
         </header>
 
-      <section className="beacon-rise mb-8 grid grid-cols-2 gap-4 lg:grid-cols-4">
+      <section className="beacon-rise mb-8 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
         {stats.map((stat) => {
           const Icon = stat.icon;
           return (

@@ -9,6 +9,7 @@ import {
   signUpAction,
   type AuthState,
 } from "@/app/(auth)/actions";
+import { PRACTITIONER_TYPES } from "@/lib/validation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -42,7 +43,7 @@ export function AuthForm({
   next,
 }: {
   mode: "login" | "signup";
-  role?: "patient" | "provider";
+  role?: "patient" | "provider" | "institution";
   next?: string;
 }) {
   const action = mode === "signup" ? signUpAction : signInAction;
@@ -51,7 +52,7 @@ export function AuthForm({
 
   return (
     <form action={formAction} className="flex flex-col gap-4" noValidate>
-      {role === "provider" && <input type="hidden" name="role" value="provider" />}
+      {role !== "patient" && <input type="hidden" name="role" value={role} />}
       {next && <input type="hidden" name="next" value={next} />}
 
       {state.error && (
@@ -61,10 +62,28 @@ export function AuthForm({
         </Alert>
       )}
 
+      {isSignup && role === "institution" && (
+        <div className="flex flex-col gap-2">
+          <Label htmlFor="institution_name">
+            Facility name
+            <Required />
+          </Label>
+          <Input
+            id="institution_name"
+            name="institution_name"
+            type="text"
+            autoComplete="organization"
+            autoCapitalize="words"
+            required
+            placeholder="e.g. Lagoon General Hospital"
+          />
+        </div>
+      )}
+
       {isSignup && (
         <div className="flex flex-col gap-2">
           <Label htmlFor="full_name">
-            Full name
+            {role === "institution" ? "Administrator's full name" : "Full name"}
             <Required />
           </Label>
           <Input
@@ -80,23 +99,45 @@ export function AuthForm({
       )}
 
       {isSignup && role === "provider" && (
-        <div className="flex flex-col gap-2">
-          <Label htmlFor="license_number">
-            Medical license number
-            <Required />
-          </Label>
-          <Input
-            id="license_number"
-            name="license_number"
-            type="text"
-            autoCapitalize="characters"
-            autoComplete="off"
-            spellCheck={false}
-            required
-            className="tabular"
-            placeholder="e.g. MDCN-123456"
-          />
-        </div>
+        <>
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="practitioner_type">
+              I am a
+              <Required />
+            </Label>
+            <select
+              id="practitioner_type"
+              name="practitioner_type"
+              required
+              defaultValue="doctor"
+              className="border-input bg-card focus-visible:ring-ring flex min-h-11 w-full rounded-[var(--radius)] border px-3 py-2 text-base shadow-sm focus:outline-none focus-visible:ring-2"
+            >
+              {PRACTITIONER_TYPES.map((p) => (
+                <option key={p.value} value={p.value}>
+                  {p.label} ({p.council})
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="license_number">
+              Council license number
+              <Required />
+            </Label>
+            <Input
+              id="license_number"
+              name="license_number"
+              type="text"
+              autoCapitalize="characters"
+              autoComplete="off"
+              spellCheck={false}
+              required
+              className="tabular"
+              placeholder="e.g. MDCN-123456 or NMCN-123456"
+            />
+          </div>
+        </>
       )}
 
       <div className="flex flex-col gap-2">

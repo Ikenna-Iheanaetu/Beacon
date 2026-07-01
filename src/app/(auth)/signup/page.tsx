@@ -21,12 +21,22 @@ export default function SignupPage() {
           </Link>
           <br />
           <span className="mt-2 inline-block">
-            Are you a doctor?{" "}
+            Are you a doctor or nurse?{" "}
             <Link
               href="/provider/signup"
               className="font-medium text-primary hover:underline"
             >
               Register here
+            </Link>
+          </span>
+          <br />
+          <span className="mt-2 inline-block">
+            Represent a hospital or clinic?{" "}
+            <Link
+              href="/institution/signup"
+              className="font-medium text-primary hover:underline"
+            >
+              Register your facility
             </Link>
           </span>
         </>

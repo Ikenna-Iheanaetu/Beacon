@@ -5,7 +5,9 @@ import { createClient } from "@/lib/supabase/server";
 import { verifyLicense } from "@/lib/verification";
 import { uploadLicenseDoc } from "@/lib/storage";
 import {
+  councilFor,
   doctorRegistrationSchema,
+  PRACTITIONER_TYPE_VALUES,
   LICENSE_FILE_TYPES,
   LICENSE_FILE_MAX_BYTES,
 } from "@/lib/validation";
@@ -48,6 +50,14 @@ export async function submitLicenseVerification(
   }
   const licenseNumber = license.data;
 
+  const rawType = formData.get("practitioner_type");
+  const practitionerType = (PRACTITIONER_TYPE_VALUES as readonly string[]).includes(
+    String(rawType),
+  )
+    ? (rawType as "doctor" | "nurse")
+    : "doctor";
+  const council = councilFor(practitionerType);
+
   const file = formData.get("license_document");
   if (!(file instanceof File) || file.size === 0) {
     return { error: "Attach a copy of your license." };
@@ -78,6 +88,8 @@ export async function submitLicenseVerification(
       license_number: licenseNumber,
       license_document_path: path,
       verify_check_result: check as never,
+      practitioner_type: practitionerType,
+      council,
     },
     { onConflict: "provider_id" },
   );

@@ -4,20 +4,13 @@ import {
   Building2,
   CheckCircle2,
   Clock,
-  ScanLine,
-  Search,
   ShieldCheck,
   Users,
   XCircle,
 } from "lucide-react";
 import { getCurrentProfile } from "@/lib/auth";
-import { isAdmin } from "@/lib/admin-guard";
 import { createClient } from "@/lib/supabase/server";
-import { practitionerTypeLabel, roleLabel } from "@/lib/roles";
-import type {
-  ProviderVerificationRow,
-  VerificationStatus,
-} from "@/lib/database.types";
+import type { InstitutionRow, VerificationStatus } from "@/lib/database.types";
 import { Brand } from "@/components/brand";
 import { SignOutButton } from "@/components/sign-out-button";
 import { Button } from "@/components/ui/button";
@@ -26,35 +19,33 @@ import { Badge } from "@/components/ui/badge";
 export const dynamic = "force-dynamic";
 
 export const metadata = {
-  title: "Doctor home",
+  title: "Institution home",
   robots: { index: false, follow: false },
 };
 
-export default async function ProviderHomePage() {
+export default async function InstitutionHomePage() {
   const session = await getCurrentProfile();
-  if (!session) redirect("/provider/login");
+  if (!session) redirect("/institution/login");
 
   const { user, profile } = session;
-  if (profile.role !== "provider") redirect("/dashboard");
+  if (profile.role !== "institution") redirect("/dashboard");
 
-  // Prefer the verification row's status; fall back to the profile flag.
+  // The institution reads its OWN facility row via RLS.
   const supabase = await createClient();
-  const { data: verification } = await supabase
-    .from("provider_verifications")
-    .select("status, practitioner_type")
-    .eq("provider_id", user.id)
-    .maybeSingle<Pick<ProviderVerificationRow, "status" | "practitioner_type">>();
+  const { data: institution } = await supabase
+    .from("institutions")
+    .select("*")
+    .eq("owner_id", user.id)
+    .maybeSingle<InstitutionRow>();
 
-  const label = verification?.practitioner_type
-    ? practitionerTypeLabel(verification.practitioner_type)
-    : roleLabel(profile.role); // "Doctor"
+  const status: VerificationStatus = institution?.status ?? "pending";
+  const verified = status === "verified";
+  const submitted = Boolean(institution);
 
-  const status: VerificationStatus =
-    verification?.status ??
-    (profile.provider_status === "approved" ? "verified" : "pending");
-
-  const approved = status === "verified" || profile.provider_status === "approved";
-  const admin = await isAdmin();
+  const facilityName =
+    institution?.name ||
+    (user.user_metadata?.institution_name as string | undefined) ||
+    "Your facility";
 
   return (
     <div className="bg-aurora relative min-h-dvh overflow-hidden">
@@ -62,7 +53,7 @@ export default async function ProviderHomePage() {
 
       <header className="relative z-10 border-b border-border/70">
         <div className="mx-auto flex w-full max-w-3xl items-center justify-between px-5 py-4">
-          <Brand href="/provider" />
+          <Brand href="/institution" />
           <SignOutButton variant="outline" />
         </div>
       </header>
@@ -71,12 +62,12 @@ export default async function ProviderHomePage() {
         <div className="beacon-rise surface-lift bg-guilloche overflow-hidden">
           <div className="flex items-center justify-between bg-gradient-to-r from-primary-800 to-primary-600 px-6 py-4 text-primary-foreground">
             <span className="flex items-center gap-2">
-              <ShieldCheck className="size-5" strokeWidth={2.4} />
+              <Building2 className="size-5" strokeWidth={2.4} />
               <span className="text-sm font-semibold uppercase tracking-[0.18em]">
-                {label} access
+                Institution
               </span>
             </span>
-            {status === "verified" ? (
+            {verified ? (
               <span className="beacon-stamp inline-flex items-center gap-1.5 rounded-md border-2 border-white/70 px-2.5 py-1 text-xs font-bold uppercase tracking-wider">
                 <CheckCircle2 className="size-3.5" />
                 Verified
@@ -95,9 +86,9 @@ export default async function ProviderHomePage() {
           </div>
 
           <div className="p-7">
-            <span className="data-label">Signed in as</span>
+            <span className="data-label">Facility</span>
             <h1 className="font-display mt-1 text-2xl font-semibold tracking-tight">
-              {profile.full_name || label}
+              {facilityName}
             </h1>
             <p className="data-value mt-0.5 text-sm text-muted-foreground">
               {user.email}
@@ -105,7 +96,7 @@ export default async function ProviderHomePage() {
 
             <div className="mt-4 flex items-center gap-2">
               <span className="data-label">Verification</span>
-              {status === "verified" ? (
+              {verified ? (
                 <Badge variant="safe">
                   <CheckCircle2 />
                   Verified
@@ -124,68 +115,56 @@ export default async function ProviderHomePage() {
             </div>
 
             <div className="mt-6 rounded-2xl border border-border bg-background/60 p-5">
-              {approved ? (
+              {verified ? (
                 <div className="flex items-start gap-3">
-                  <ScanLine className="mt-0.5 size-5 shrink-0 text-primary" />
+                  <ShieldCheck className="mt-0.5 size-5 shrink-0 text-primary" />
                   <p className="text-sm leading-relaxed text-foreground">
-                    You&apos;re approved. To view a patient&apos;s emergency
-                    information, scan their Beacon QR code with your phone camera
-                    — it opens the emergency view directly. You can also look up
-                    a patient by national ID.{" "}
-                    <span className="text-muted-foreground">
-                      Every access is logged.
-                    </span>
+                    Your facility is verified. Enrolling and managing clinical
+                    staff (doctors and nurses) under your institution is coming
+                    next — your verification is the foundation that makes those
+                    affiliations trustworthy.
                   </p>
                 </div>
               ) : status === "rejected" ? (
                 <div className="flex items-start gap-3">
                   <XCircle className="mt-0.5 size-5 shrink-0 text-critical" />
                   <p className="text-sm leading-relaxed text-foreground">
-                    Your license couldn&apos;t be verified. Review your details
-                    and submit again on the verification page.
+                    Your facility couldn&apos;t be verified. Review your
+                    registration details and submit again.
+                  </p>
+                </div>
+              ) : submitted ? (
+                <div className="flex items-start gap-3">
+                  <Clock className="mt-0.5 size-5 shrink-0 text-caution" />
+                  <p className="text-sm leading-relaxed text-foreground">
+                    Your registration is awaiting review. An administrator will
+                    verify your facility&apos;s details and documents.
                   </p>
                 </div>
               ) : (
                 <div className="flex items-start gap-3">
-                  <Clock className="mt-0.5 size-5 shrink-0 text-caution" />
+                  <Building2 className="mt-0.5 size-5 shrink-0 text-caution" />
                   <p className="text-sm leading-relaxed text-foreground">
-                    Your account is awaiting verification. Submit your council
-                    license so an administrator can approve your access to
-                    emergency records.
+                    Submit your facility&apos;s registration details so an
+                    administrator can verify your institution.
                   </p>
                 </div>
               )}
             </div>
 
             <div className="mt-5 flex flex-wrap gap-3">
-              <Button asChild variant={approved ? "outline" : "default"}>
-                <Link href="/provider/verify">
+              <Button asChild variant={verified ? "outline" : "default"}>
+                <Link href="/institution/verify">
                   <ShieldCheck />
-                  {approved ? "View verification" : "Verify your council license"}
+                  {submitted ? "View registration" : "Submit registration"}
                 </Link>
               </Button>
 
-              {approved && (
+              {verified && (
                 <Button asChild variant="outline">
-                  <Link href="/provider/lookup">
-                    <Search />
-                    Patient lookup
-                  </Link>
-                </Button>
-              )}
-
-              <Button asChild variant="outline">
-                <Link href="/provider/institution">
-                  <Building2 />
-                  Institution affiliation
-                </Link>
-              </Button>
-
-              {admin && (
-                <Button asChild variant="outline">
-                  <Link href="/admin">
+                  <Link href="/institution/members">
                     <Users />
-                    Open admin approvals
+                    Manage staff
                   </Link>
                 </Button>
               )}

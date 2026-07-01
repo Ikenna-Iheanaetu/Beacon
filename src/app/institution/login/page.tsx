@@ -2,9 +2,9 @@ import Link from "next/link";
 import { AuthShell } from "@/components/auth/auth-shell";
 import { AuthForm } from "@/components/auth/auth-form";
 
-export const metadata = { title: "Doctor & nurse sign in" };
+export const metadata = { title: "Institution sign in" };
 
-export default async function ProviderLoginPage({
+export default async function InstitutionLoginPage({
   searchParams,
 }: {
   searchParams: Promise<{ next?: string }>;
@@ -13,21 +13,21 @@ export default async function ProviderLoginPage({
 
   return (
     <AuthShell
-      title="Doctor & nurse sign in"
-      subtitle="Sign in to view emergency medical information."
+      title="Institution sign in"
+      subtitle="Sign in to manage your facility and its clinical staff."
       footer={
         <>
           Need an account?{" "}
           <Link
-            href="/provider/signup"
+            href="/institution/signup"
             className="font-medium text-primary hover:underline"
           >
-            Register as a doctor or nurse
+            Register your facility
           </Link>
         </>
       }
     >
-      <AuthForm mode="login" role="provider" next={sp.next} />
+      <AuthForm mode="login" role="institution" next={sp.next} />
     </AuthShell>
   );
 }

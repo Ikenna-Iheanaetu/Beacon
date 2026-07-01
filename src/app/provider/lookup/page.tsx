@@ -30,8 +30,8 @@ export default async function ProviderLookupPage() {
             </AlertTitle>
             <AlertDescription className="flex flex-col gap-3">
               {pending
-                ? "Your doctor account hasn't been approved yet. You'll be able to look up records once an administrator approves you."
-                : "Only approved doctors can look up patient records."}
+                ? "Your account hasn't been approved yet. You'll be able to look up records once an administrator approves you."
+                : "Only approved practitioners can look up patient records."}
               <SignOutButton variant="outline" />
             </AlertDescription>
           </Alert>
@@ -66,7 +66,7 @@ export default async function ProviderLookupPage() {
               patient is notified and the access is recorded in their visible
               activity log.{" "}
               <Link href="/provider" className="underline">
-                Back to doctor home
+                Back to dashboard
               </Link>
             </p>
           </div>
