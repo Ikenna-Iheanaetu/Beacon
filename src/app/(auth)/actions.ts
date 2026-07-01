@@ -75,14 +75,18 @@ export async function signUpAction(
     return { error: error.message };
   }
 
-  // Provider self-registration always lands in the pending state.
+  // Provider self-registration: if signup already granted a session (email
+  // confirmation off), skip the interstitial and go straight to submitting a
+  // license. Otherwise land on /provider/pending, which explains they must
+  // confirm their email first before they can submit anything.
   if (role === "provider") {
-    redirect("/provider/pending");
+    redirect(data.session ? "/provider/verify" : "/provider/pending");
   }
 
-  // Institution self-registration lands on its dashboard to submit facility docs.
+  // Institution self-registration: same logic, straight to the registration
+  // form when already signed in.
   if (role === "institution") {
-    redirect("/institution");
+    redirect(data.session ? "/institution/verify" : "/institution/pending");
   }
 
   // If email confirmation is on, there's no session yet.

@@ -92,7 +92,13 @@ export default async function AdminPage() {
       countProfiles(admin),
       countProfiles(admin, { column: "role", value: "provider" }),
       countProfiles(admin, { column: "role", value: "patient" }),
-      countProfiles(admin, { column: "provider_status", value: "pending" }),
+      // Matches /admin/verifications exactly: a submitted license awaiting
+      // review, not just an account that hasn't been approved yet.
+      admin
+        .from("provider_verifications")
+        .select("*", { count: "exact", head: true })
+        .eq("status", "pending")
+        .then(({ count }) => count ?? 0),
       admin
         .from("institutions")
         .select("*", { count: "exact", head: true })
