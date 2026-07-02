@@ -10,6 +10,7 @@ export type UserRole = "patient" | "provider" | "admin" | "institution";
 export type ProviderStatus = "none" | "pending" | "approved";
 export type VerificationStatus = "pending" | "verified" | "rejected";
 export type MembershipStatus = "pending" | "approved" | "rejected";
+export type CareAccessStatus = "pending" | "approved" | "rejected" | "revoked";
 export type PractitionerType = "doctor" | "nurse";
 export type Council = "MDCN" | "NMCN";
 export type FacilityType =
@@ -156,6 +157,15 @@ export type InstitutionMemberRow = {
   decided_at: string | null;
 };
 
+export type CareAccessRequestRow = {
+  id: string;
+  patient_user_id: string;
+  doctor_id: string;
+  status: CareAccessStatus;
+  requested_at: string;
+  decided_at: string | null;
+};
+
 export interface Database {
   public: {
     Tables: {
@@ -214,6 +224,15 @@ export interface Database {
           member_id: string;
         };
         Update: Partial<InstitutionMemberRow>;
+        Relationships: [];
+      };
+      care_access_requests: {
+        Row: CareAccessRequestRow;
+        Insert: Partial<CareAccessRequestRow> & {
+          patient_user_id: string;
+          doctor_id: string;
+        };
+        Update: Partial<CareAccessRequestRow>;
         Relationships: [];
       };
     };

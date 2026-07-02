@@ -22,6 +22,8 @@ const TYPE_LABELS: Record<string, string> = {
   emergency_view: "Emergency view",
   pdf_export: "PDF downloaded",
   national_id_lookup: "Looked up by ID",
+  email_lookup: "Looked up by email",
+  record_edit: "Record edited",
   admin_review: "Administrative review",
 };
 

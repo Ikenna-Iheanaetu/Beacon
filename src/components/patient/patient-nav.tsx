@@ -7,6 +7,7 @@ import {
   ClipboardList,
   LayoutDashboard,
   QrCode,
+  ShieldCheck,
   UserPen,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -15,6 +16,7 @@ const NAV = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/profile/edit", label: "Profile", icon: UserPen },
   { href: "/qr", label: "QR code", icon: QrCode },
+  { href: "/care-access", label: "Edit access", icon: ShieldCheck },
   { href: "/notifications", label: "Notifications", icon: Bell },
   { href: "/access-log", label: "Access log", icon: ClipboardList },
 ];

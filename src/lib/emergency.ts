@@ -43,7 +43,9 @@ export interface EmergencyView {
 }
 
 export type EmergencyResult =
-  | { status: "ok"; view: EmergencyView }
+  // patient_user_id is the patient's auth/profile id — not shown anywhere,
+  // just handed back so a provider-lookup caller can request care access.
+  | { status: "ok"; view: EmergencyView; patient_user_id: string }
   | { status: "disabled" }
   | { status: "not_found" };
 
@@ -181,7 +183,7 @@ export async function readEmergencyProfile(
   }
 
   const view = await buildEmergencyView(mp, await patientName(admin, mp.user_id));
-  return { status: "ok", view };
+  return { status: "ok", view, patient_user_id: mp.user_id };
 }
 
 /**
@@ -219,7 +221,52 @@ export async function lookupByNationalId(
   notifyPatient(admin, mp.user_id, accessor).catch(() => {});
 
   const view = await buildEmergencyView(mp, await patientName(admin, mp.user_id));
-  return { status: "ok", view };
+  return { status: "ok", view, patient_user_id: mp.user_id };
+}
+
+/**
+ * Email backup lookup, alongside the national-ID one. An approved doctor
+ * enters a patient's account email; matched via the admin auth API (emails
+ * aren't stored in `profiles`), then the same privileged read path. Logged in
+ * the patient-visible access_logs as `email_lookup`.
+ *
+ * Caller must confirm the accessor is an approved doctor first.
+ */
+export async function lookupByEmail(
+  email: string,
+  accessor: Accessor,
+): Promise<EmergencyResult> {
+  const admin = createAdminClient();
+
+  // No direct "get user by email" in the admin API — list and match, same
+  // pattern already used for the admin verification queues.
+  const { data: userList } = await admin.auth.admin.listUsers({ perPage: 1000 });
+  const match = userList?.users.find(
+    (u) => u.email?.toLowerCase() === email.toLowerCase(),
+  );
+  if (!match) return { status: "not_found" };
+
+  const { data: mp } = await admin
+    .from("medical_profiles")
+    .select("*")
+    .eq("user_id", match.id)
+    .maybeSingle();
+
+  if (!mp) return { status: "not_found" };
+  if (mp.emergency_access_enabled === false) return { status: "disabled" };
+
+  await admin.from("access_logs").insert({
+    accessor_id: accessor.id,
+    patient_id: mp.id,
+    access_type: "email_lookup",
+    accessor_name: accessor.name,
+    accessor_email: accessor.email,
+    note: "Looked up by email (no QR present)",
+  });
+  notifyPatient(admin, mp.user_id, accessor).catch(() => {});
+
+  const view = await buildEmergencyView(mp, await patientName(admin, mp.user_id));
+  return { status: "ok", view, patient_user_id: mp.user_id };
 }
 
 /** Look up the patient's email (auth side) and send the access notification. */

@@ -2,6 +2,7 @@ import {
   Bell,
   Download,
   Eye,
+  PenLine,
   Search,
   ShieldAlert,
   type LucideIcon,
@@ -36,6 +37,14 @@ function describe(accessType: string, who: string): Alert {
       };
     case "national_id_lookup":
       return { icon: Search, tone: "info", title: `${who} looked up your record by ID` };
+    case "email_lookup":
+      return { icon: Search, tone: "info", title: `${who} looked up your record by email` };
+    case "record_edit":
+      return {
+        icon: PenLine,
+        tone: "warning",
+        title: `${who} edited your medical record`,
+      };
     case "emergency_view":
     default:
       return { icon: Eye, tone: "info", title: `${who} opened your emergency record` };

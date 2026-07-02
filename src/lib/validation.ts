@@ -38,7 +38,7 @@ export const ORGAN_DONOR_OPTIONS = [
   { value: "no", label: "No" },
 ] as const;
 
-const optionalText = z
+export const optionalText = z
   .string()
   .trim()
   .max(2000, "Please keep this under 2000 characters")
@@ -59,6 +59,15 @@ const optionalPhone = z
   .regex(/^[+()\-\s\d]*$/, "Use only digits, spaces, and + ( ) -")
   .optional()
   .or(z.literal(""));
+
+/** National ID, used both for saving and for the doctor lookup. Mandatory —
+ *  it's the only reliable way for a provider to find a record with no QR. */
+export const nationalIdSchema = z
+  .string()
+  .trim()
+  .min(5, "Enter a valid national ID")
+  .max(40, "Enter a valid national ID")
+  .regex(/^[A-Za-z0-9-]+$/, "Use only letters, numbers, and dashes");
 
 /** Medical profile form (the main patient form). Plain-language fields. */
 export const medicalProfileSchema = z.object({
@@ -93,17 +102,24 @@ export const medicalProfileSchema = z.object({
     .max(160, "Please keep this under 160 characters")
     .optional()
     .or(z.literal("")),
-  // National ID (backup lookup when no QR is present)
-  national_id: z
-    .string()
-    .trim()
-    .max(40, "Please keep this under 40 characters")
-    .regex(/^[A-Za-z0-9-]*$/, "Use only letters, numbers, and dashes")
-    .optional()
-    .or(z.literal("")),
+  // National ID — required. The only reliable backup lookup when no QR is present.
+  national_id: nationalIdSchema,
 });
 
 export type MedicalProfileInput = z.infer<typeof medicalProfileSchema>;
+
+/**
+ * A doctor's edit to a patient's clinical fields, once the patient has
+ * approved that doctor's care-access request. Deliberately narrower than
+ * medicalProfileSchema — no identity/contact fields, matching the reduced
+ * write scope in src/lib/care-edit.ts.
+ */
+export const clinicalEditSchema = z.object({
+  allergies: optionalText,
+  medications: optionalText,
+  medical_conditions: optionalText,
+  additional_notes: optionalText,
+});
 
 /** Auth schemas. */
 export const credentialsSchema = z.object({
@@ -225,14 +241,6 @@ export const reasonSchema = z
   .trim()
   .min(10, "Give a brief reason (at least 10 characters)")
   .max(500, "Please keep the reason under 500 characters");
-
-/** National ID, used both for saving and for the doctor lookup. */
-export const nationalIdSchema = z
-  .string()
-  .trim()
-  .min(5, "Enter a valid national ID")
-  .max(40, "Enter a valid national ID")
-  .regex(/^[A-Za-z0-9-]+$/, "Use only letters, numbers, and dashes");
 
 /** Email a record to a recipient (referral / transfer). */
 export const recordTransferSchema = z.object({

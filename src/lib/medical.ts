@@ -71,6 +71,7 @@ export function profileCompleteness(p: DecryptedMedicalProfile | null): {
     p?.medical_conditions,
     p?.emergency_contact_name,
     p?.emergency_contact_phone,
+    p?.national_id,
   ];
   const total = checks.length;
   const filled = checks.filter(Boolean).length;

@@ -9,7 +9,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 // Sensitive — must never be crawled or indexed.
 export const metadata: Metadata = {
-  title: "National ID lookup",
+  title: "Patient lookup",
   robots: { index: false, follow: false, nocache: true },
 };
 
@@ -59,7 +59,7 @@ export default async function ProviderLookupPage() {
               Backup lookup
             </span>
             <h1 className="font-display mt-1 text-2xl font-semibold tracking-tight">
-              Find a record by national ID
+              Find a record by national ID or email
             </h1>
             <p className="mt-1 text-sm text-muted-foreground">
               For when a patient can&apos;t present their Beacon QR code. The

@@ -189,13 +189,14 @@ export function ProfileForm({
         <div className="rule-dotted pt-4">
           <Field
             htmlFor="national_id"
-            label="National ID (optional)"
+            label="National ID (required)"
             hint="Lets an approved doctor pull up your record by ID if your QR code isn't to hand. Stored encrypted."
           >
             <Input
               id="national_id"
               name="national_id"
               autoComplete="off"
+              required
               className="tabular"
               defaultValue={initial?.national_id ?? ""}
               placeholder="e.g. 1234567890"
