@@ -7,6 +7,7 @@ import { getCurrentProfile, isApprovedProvider } from "@/lib/auth";
 import {
   lookupByEmail,
   lookupByNationalId,
+  type EmergencyResult,
   type EmergencyView,
 } from "@/lib/emergency";
 import { clinicalEditSchema, nationalIdSchema } from "@/lib/validation";
@@ -52,28 +53,23 @@ export async function lookupPatient(
 
   const mode = formData.get("mode") === "email" ? "email" : "national_id";
 
-  const result = await (mode === "email"
-    ? (async () => {
-        const parsed = z.email().safeParse(formData.get("query"));
-        if (!parsed.success) {
-          return {
-            error: "Enter a valid email address",
-          } as const;
-        }
-        return { ok: await lookupByEmail(parsed.data, accessor) } as const;
-      })()
-    : (async () => {
-        const parsed = nationalIdSchema.safeParse(formData.get("query"));
-        if (!parsed.success) {
-          return {
-            error: parsed.error.issues[0]?.message ?? "Enter a valid national ID",
-          } as const;
-        }
-        return { ok: await lookupByNationalId(parsed.data, accessor) } as const;
-      })());
-
-  if ("error" in result) return { status: "error", message: result.error };
-  const lookup = result.ok;
+  let lookup: EmergencyResult;
+  if (mode === "email") {
+    const parsed = z.email().safeParse(formData.get("query"));
+    if (!parsed.success) {
+      return { status: "error", message: "Enter a valid email address" };
+    }
+    lookup = await lookupByEmail(parsed.data, accessor);
+  } else {
+    const parsed = nationalIdSchema.safeParse(formData.get("query"));
+    if (!parsed.success) {
+      return {
+        status: "error",
+        message: parsed.error.issues[0]?.message ?? "Enter a valid national ID",
+      };
+    }
+    lookup = await lookupByNationalId(parsed.data, accessor);
+  }
 
   if (lookup.status !== "ok") return { status: lookup.status };
 

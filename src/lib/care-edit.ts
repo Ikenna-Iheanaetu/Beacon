@@ -2,6 +2,7 @@ import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { encryptField } from "@/lib/crypto";
 import { sendAccessNotification } from "@/lib/notify";
+import type { MedicalProfileRow } from "@/lib/database.types";
 
 /**
  * A doctor's write path to a patient's clinical fields — deliberately
@@ -62,7 +63,12 @@ export async function applyClinicalEdit(
     .maybeSingle();
   if (!mp) return "not_found";
 
-  const updates: Record<string, string | null> = {};
+  const updates: Partial<
+    Pick<
+      MedicalProfileRow,
+      "allergies" | "medications" | "medical_conditions" | "additional_notes" | "updated_at"
+    >
+  > = {};
   const changedLabels: string[] = [];
   for (const key of Object.keys(CLINICAL_FIELD_LABELS) as (keyof ClinicalEdit)[]) {
     const value = edit[key];
