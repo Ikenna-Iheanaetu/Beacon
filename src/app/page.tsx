@@ -25,7 +25,7 @@ const FEATURES = [
     n: "02",
     icon: QrCode,
     title: "One scan in an emergency",
-    body: "Carry a single code. An approved responder scans it and sees exactly what they need — fast, and nothing more.",
+    body: "Carry a single code. No app, no login — anyone who scans it sees your full medical record instantly, exactly when it matters most.",
   },
   {
     n: "03",
@@ -85,9 +85,9 @@ export default async function LandingPage() {
               moment it matters.
             </h1>
             <p className="mt-6 max-w-md text-lg leading-relaxed text-muted-foreground">
-              Beacon keeps the few facts a responder needs — blood group,
-              allergies, medications — encrypted, carried as a QR code, and
-              shared only with people you can trust.
+              Beacon keeps your medical record encrypted and carried as a QR
+              code — blood group, allergies, medications, and more, ready the
+              instant a responder scans it. No app or login needed.
             </p>
             <div className="mt-9 flex flex-col gap-3 sm:flex-row">
               {session ? (

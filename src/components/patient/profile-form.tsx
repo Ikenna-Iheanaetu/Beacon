@@ -354,9 +354,21 @@ export function ProfileForm({
       <Section
         n="07"
         icon={<HeartHandshake className="size-5" />}
-        title="Primary doctor"
-        description="Who looks after you day to day."
+        title="Doctor & hospital"
+        description="Who looks after you day to day — shown to anyone who scans your emergency code."
       >
+        <Field
+          htmlFor="current_hospital_name"
+          label="Current hospital (optional)"
+          hint="If you're currently admitted or under care somewhere, name it here."
+        >
+          <Input
+            id="current_hospital_name"
+            name="current_hospital_name"
+            defaultValue={initial?.current_hospital_name ?? ""}
+            placeholder="e.g. Lagoon General Hospital"
+          />
+        </Field>
         <div className="grid gap-4 sm:grid-cols-2">
           <Field htmlFor="primary_physician_name" label="Doctor's name">
             <Input

@@ -1,4 +1,5 @@
 import {
+  Building2,
   Droplet,
   HeartHandshake,
   HeartPulse,
@@ -143,6 +144,18 @@ export function TriageCard({ data }: { data: EmergencyView }) {
             </div>
           </section>
 
+          {data.national_id && (
+            <section
+              className="beacon-rise mt-4 flex items-center justify-between rounded-2xl border border-border bg-card p-5"
+              style={rise(4)}
+            >
+              <span className="data-label">National ID</span>
+              <p className="data-value tabular text-lg text-foreground">
+                {data.national_id}
+              </p>
+            </section>
+          )}
+
           {/* 3 & 4 — MEDICATIONS / CONDITIONS */}
           <div className="mt-4 grid gap-4 sm:grid-cols-2">
             <Block
@@ -202,6 +215,20 @@ export function TriageCard({ data }: { data: EmergencyView }) {
                 )}
             </div>
           </section>
+
+          {/* Current hospital */}
+          {data.current_hospital_name && (
+            <section
+              className="beacon-rise mt-4 flex items-center gap-2 rounded-2xl border border-border bg-card p-5"
+              style={rise(7)}
+            >
+              <Building2 className="size-5 text-primary" strokeWidth={2.2} />
+              <div>
+                <span className="data-label">Currently at</span>
+                <p className="text-foreground">{data.current_hospital_name}</p>
+              </div>
+            </section>
+          )}
 
           {/* Primary doctor */}
           {(data.primary_physician.name || data.primary_physician.phone) && (

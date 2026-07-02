@@ -6,12 +6,15 @@ import { nationalIdHash } from "@/lib/verification";
 import type { MedicalProfileRow, Sex } from "@/lib/database.types";
 
 /**
- * The privileged emergency read path (BUILD_SPEC §7). The ONE place that
- * crosses the row-owner boundary, decrypts sensitive fields, writes the audit
- * log, and notifies the patient — all via the secret key.
+ * The privileged emergency read path. The ONE place that crosses the
+ * row-owner boundary, decrypts sensitive fields, writes the audit log, and
+ * notifies the patient — all via the secret key.
  *
- * The caller must already have authenticated the provider and confirmed
- * role=provider + provider_status=approved BEFORE calling readEmergencyProfile.
+ * The scan page (/e/[qr_token]) requires no login — a bystander with no
+ * account must be able to view a patient's full record in an emergency. The
+ * caller passes `accessor: null` for an unauthenticated visitor; every access
+ * is still logged (as "Anonymous scan" when accessor is null) so the patient
+ * always knows their record was viewed, even without knowing by whom.
  */
 
 export interface EmergencyContact {
@@ -20,7 +23,7 @@ export interface EmergencyContact {
   relationship: string | null;
 }
 
-/** The minimal emergency view — never email, hashes, or account metadata. */
+/** The full emergency view — everything on the patient's record. */
 export interface EmergencyView {
   patient_name: string | null;
   date_of_birth: string | null;
@@ -34,6 +37,8 @@ export interface EmergencyView {
   emergency_contact: EmergencyContact;
   emergency_contact_2: EmergencyContact;
   primary_physician: { name: string | null; phone: string | null };
+  current_hospital_name: string | null;
+  national_id: string | null;
   accessed_at: string;
 }
 
@@ -48,12 +53,13 @@ export async function buildEmergencyView(
   mp: MedicalProfileRow,
   patientName: string | null,
 ): Promise<EmergencyView> {
-  const [allergies, medications, medical_conditions, additional_notes] =
+  const [allergies, medications, medical_conditions, additional_notes, national_id] =
     await Promise.all([
       decryptField(mp.allergies),
       decryptField(mp.medications),
       decryptField(mp.medical_conditions),
       decryptField(mp.additional_notes),
+      decryptField(mp.national_id),
     ]);
 
   return {
@@ -80,6 +86,8 @@ export async function buildEmergencyView(
       name: mp.primary_physician_name,
       phone: mp.primary_physician_phone,
     },
+    current_hospital_name: mp.current_hospital_name,
+    national_id: national_id || null,
     accessed_at: new Date().toISOString(),
   };
 }
@@ -114,9 +122,15 @@ export interface Accessor {
   email: string | null;
 }
 
+/**
+ * @param accessor The signed-in, approved provider viewing the record, or
+ *   `null` for an unauthenticated scan (the scan page requires no login).
+ *   A null accessor is logged as "Anonymous scan" — still visible to the
+ *   patient, just without an identity attached.
+ */
 export async function readEmergencyProfile(
   token: string,
-  accessor: Accessor,
+  accessor: Accessor | null,
 ): Promise<EmergencyResult> {
   const admin = createAdminClient();
 
@@ -131,30 +145,39 @@ export async function readEmergencyProfile(
   // Patient kill switch (BUILD_SPEC §7) — patient can pause all access.
   if (mp.emergency_access_enabled === false) return { status: "disabled" };
 
-  // Audit the access, de-duplicating rapid repeat views by the same provider.
+  const accessorName = accessor?.name ?? "Anonymous scan";
+  const accessorEmail = accessor?.email ?? null;
+
+  // Audit the access, de-duplicating rapid repeat views by the same
+  // accessor (or, for anonymous scans, any anonymous scan of this patient).
   const DEDUPE_WINDOW_MS = 2 * 60 * 1000;
   const since = new Date(Date.now() - DEDUPE_WINDOW_MS).toISOString();
-  const { data: recent } = await admin
+  let dedupeQuery = admin
     .from("access_logs")
     .select("id")
-    .eq("accessor_id", accessor.id)
     .eq("patient_id", mp.id)
     .eq("access_type", "emergency_view")
-    .gte("created_at", since)
-    .limit(1)
-    .maybeSingle();
+    .gte("created_at", since);
+  dedupeQuery = accessor
+    ? dedupeQuery.eq("accessor_id", accessor.id)
+    : dedupeQuery.is("accessor_id", null);
+  const { data: recent } = await dedupeQuery.limit(1).maybeSingle();
 
   if (!recent) {
     await admin.from("access_logs").insert({
-      accessor_id: accessor.id,
+      accessor_id: accessor?.id ?? null,
       patient_id: mp.id,
       access_type: "emergency_view",
-      accessor_name: accessor.name,
-      accessor_email: accessor.email,
+      accessor_name: accessorName,
+      accessor_email: accessorEmail,
     });
 
     // Notify the patient that their record was opened (fire-and-forget).
-    notifyPatient(admin, mp.user_id, accessor).catch(() => {});
+    notifyPatient(admin, mp.user_id, {
+      id: accessor?.id ?? "",
+      name: accessorName,
+      email: accessorEmail,
+    }).catch(() => {});
   }
 
   const view = await buildEmergencyView(mp, await patientName(admin, mp.user_id));

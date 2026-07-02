@@ -86,6 +86,13 @@ export const medicalProfileSchema = z.object({
   // Primary doctor
   primary_physician_name: optionalName,
   primary_physician_phone: optionalPhone,
+  // Current hospital (shown on the public emergency view alongside the doctor above)
+  current_hospital_name: z
+    .string()
+    .trim()
+    .max(160, "Please keep this under 160 characters")
+    .optional()
+    .or(z.literal("")),
   // National ID (backup lookup when no QR is present)
   national_id: z
     .string()

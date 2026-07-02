@@ -83,11 +83,13 @@ export type MedicalProfileRow = {
   // 0004_verification_audit
   national_id: string | null;       // AES-encrypted (display)
   national_id_hash: string | null;  // keyed HMAC for exact lookup
+  // 0010_public_emergency_access
+  current_hospital_name: string | null;
 };
 
 export type AccessLogRow = {
   id: string;
-  accessor_id: string;
+  accessor_id: string | null; // null for an anonymous (no-login) scan
   patient_id: string;
   access_type: string; // 'emergency_view' | 'admin_review' | 'national_id_lookup'
   created_at: string;
@@ -172,7 +174,6 @@ export interface Database {
       access_logs: {
         Row: AccessLogRow;
         Insert: Partial<AccessLogRow> & {
-          accessor_id: string;
           patient_id: string;
           access_type: string;
         };

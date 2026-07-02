@@ -2,8 +2,9 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import type { Database } from "@/lib/database.types";
 
-/** Routes that require a signed-in user. `/e/*` is handled here too so a
- *  provider is sent to login before the emergency view renders. */
+/** Routes that require a signed-in user. `/e/*` (the emergency scan view) is
+ *  deliberately NOT here — it must be viewable with no login, since a
+ *  bystander in an emergency has no account. */
 const PROTECTED_PREFIXES = [
   "/dashboard",
   "/profile",
@@ -12,7 +13,6 @@ const PROTECTED_PREFIXES = [
   "/admin",
   // /provider/* self-guards in-page (its /login and /signup are public, so a
   // broad prefix here would wrongly block them).
-  "/e/",
 ];
 
 function isProtected(pathname: string): boolean {
@@ -60,8 +60,7 @@ export async function proxy(request: NextRequest) {
 
   if (!user && isProtected(pathname)) {
     const url = request.nextUrl.clone();
-    // Emergency links go to the provider login; everything else to /login.
-    url.pathname = pathname.startsWith("/e/") ? "/provider/login" : "/login";
+    url.pathname = "/login";
     url.searchParams.set("next", pathname + search);
     return NextResponse.redirect(url);
   }

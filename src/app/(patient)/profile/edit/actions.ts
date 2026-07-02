@@ -47,6 +47,7 @@ export async function saveMedicalProfile(
     emergency_contact_2_relationship: formData.get("emergency_contact_2_relationship"),
     primary_physician_name: formData.get("primary_physician_name"),
     primary_physician_phone: formData.get("primary_physician_phone"),
+    current_hospital_name: formData.get("current_hospital_name"),
     national_id: formData.get("national_id"),
   });
   if (!parsed.success) {
@@ -85,6 +86,7 @@ export async function saveMedicalProfile(
         v.emergency_contact_2_relationship || null,
       primary_physician_name: v.primary_physician_name || null,
       primary_physician_phone: v.primary_physician_phone || null,
+      current_hospital_name: v.current_hospital_name || null,
       national_id: await encryptField(v.national_id),
       national_id_hash: v.national_id ? nationalIdHash(v.national_id) : null,
       updated_at: new Date().toISOString(),
