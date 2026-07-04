@@ -166,6 +166,14 @@ export type CareAccessRequestRow = {
   decided_at: string | null;
 };
 
+export type NotificationReadRow = {
+  id: string;
+  patient_user_id: string;
+  access_log_id: string;
+  read_at: string | null;
+  dismissed_at: string | null;
+};
+
 export interface Database {
   public: {
     Tables: {
@@ -233,6 +241,15 @@ export interface Database {
           doctor_id: string;
         };
         Update: Partial<CareAccessRequestRow>;
+        Relationships: [];
+      };
+      notification_reads: {
+        Row: NotificationReadRow;
+        Insert: Partial<NotificationReadRow> & {
+          patient_user_id: string;
+          access_log_id: string;
+        };
+        Update: Partial<NotificationReadRow>;
         Relationships: [];
       };
     };

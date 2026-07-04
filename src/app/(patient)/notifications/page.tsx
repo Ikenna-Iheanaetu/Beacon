@@ -1,42 +1,38 @@
-import { createClient } from "@/lib/supabase/server";
+import { getNotifications } from "@/lib/notifications";
 import { NotificationsList } from "@/components/patient/notifications-list";
+import { MarkAllReadButton } from "@/components/patient/mark-all-read-button";
 
 /**
- * In-app notifications (BUILD_SPEC §7). Every privileged access to a patient's
- * record already writes an `access_logs` row; this page reframes those events as
- * a patient-facing alert feed (RLS scopes the query to the signed-in patient).
- * Anything in the last 7 days is flagged "New".
+ * In-app notifications. Every privileged access to a patient's record already
+ * writes an `access_logs` row; this page reframes those events as a
+ * patient-facing alert feed. Read/dismiss state lives in notification_reads
+ * (see lib/notifications.ts) — access_logs itself is never touched, so
+ * /access-log stays the complete, permanent record regardless of what's been
+ * read or dismissed here.
  */
 
-const SEVEN_DAYS = 7 * 24 * 60 * 60 * 1000;
-
 export default async function NotificationsPage() {
-  const supabase = await createClient();
-  const { data: logs } = await supabase
-    .from("access_logs")
-    .select("id, access_type, created_at, accessor_name, note")
-    .order("created_at", { ascending: false });
-
-  const rows = logs ?? [];
-  const unread = rows.filter(
-    (r) => Date.now() - new Date(r.created_at).getTime() < SEVEN_DAYS,
-  ).length;
+  const rows = await getNotifications();
+  const unread = rows.filter((r) => !r.read).length;
 
   return (
     <div className="flex flex-col gap-6">
-      <header className="beacon-rise">
-        <span className="data-label text-primary-700">Stay informed</span>
-        <h1 className="font-display mt-1 flex items-center gap-2 text-3xl font-semibold tracking-tight">
-          Notifications
-          {unread > 0 && (
-            <span className="inline-grid min-w-6 place-items-center rounded-full bg-primary px-2 py-0.5 text-sm font-semibold text-primary-foreground">
-              {unread}
-            </span>
-          )}
-        </h1>
-        <p className="mt-1.5 text-sm text-muted-foreground">
-          You&apos;re alerted whenever someone accesses your medical record.
-        </p>
+      <header className="beacon-rise flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <span className="data-label text-primary-700">Stay informed</span>
+          <h1 className="font-display mt-1 flex items-center gap-2 text-3xl font-semibold tracking-tight">
+            Notifications
+            {unread > 0 && (
+              <span className="inline-grid min-w-6 place-items-center rounded-full bg-primary px-2 py-0.5 text-sm font-semibold text-primary-foreground">
+                {unread}
+              </span>
+            )}
+          </h1>
+          <p className="mt-1.5 text-sm text-muted-foreground">
+            You&apos;re alerted whenever someone accesses your medical record.
+          </p>
+        </div>
+        {unread > 0 && <MarkAllReadButton />}
       </header>
 
       <NotificationsList rows={rows} />

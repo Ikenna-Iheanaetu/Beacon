@@ -1,19 +1,24 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import {
   Bell,
+  Check,
   Download,
   Eye,
   PenLine,
   Search,
   ShieldAlert,
+  X,
   type LucideIcon,
 } from "lucide-react";
+import {
+  dismissNotification,
+  markNotificationRead,
+} from "@/app/(patient)/notifications/actions";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-
-const SEVEN_DAYS = 7 * 24 * 60 * 60 * 1000;
 
 interface LogRow {
   id: string;
@@ -21,6 +26,7 @@ interface LogRow {
   created_at: string;
   accessor_name: string | null;
   note: string | null;
+  read: boolean;
 }
 
 interface Alert {
@@ -67,13 +73,69 @@ function relativeTime(iso: string): string {
   return new Date(iso).toLocaleDateString(undefined, { dateStyle: "medium" });
 }
 
-function isNew(iso: string): boolean {
-  return Date.now() - new Date(iso).getTime() < SEVEN_DAYS;
+function NotificationItem({ log }: { log: LogRow }) {
+  const [pending, startTransition] = useTransition();
+  const who = log.accessor_name || "A verified provider";
+  const { icon: Icon, tone, title } = describe(log.access_type, who);
+
+  return (
+    <li className="surface flex items-start gap-3.5 p-4 sm:p-5">
+      <span
+        className={cn(
+          "grid size-10 shrink-0 place-items-center rounded-xl",
+          tone === "warning" ? "bg-caution/10 text-caution" : "bg-info/10 text-info",
+        )}
+      >
+        <Icon className="size-5" />
+      </span>
+      <div className="min-w-0 flex-1">
+        <div className="flex items-start justify-between gap-3">
+          <p className="text-sm font-medium text-foreground">
+            {title}
+            {!log.read && (
+              <Badge variant="info" className="ml-2 align-middle">
+                Unread
+              </Badge>
+            )}
+          </p>
+          <span className="tabular shrink-0 text-xs text-muted-foreground">
+            {relativeTime(log.created_at)}
+          </span>
+        </div>
+        {log.note && <p className="mt-1 text-xs text-muted-foreground">{log.note}</p>}
+
+        <div className="mt-2 flex gap-2">
+          {!log.read && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              disabled={pending}
+              onClick={() => startTransition(() => markNotificationRead(log.id))}
+            >
+              <Check />
+              Mark as read
+            </Button>
+          )}
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            disabled={pending}
+            onClick={() => startTransition(() => dismissNotification(log.id))}
+          >
+            <X />
+            Dismiss
+          </Button>
+        </div>
+      </div>
+    </li>
+  );
 }
 
 export function NotificationsList({ rows }: { rows: LogRow[] }) {
   const [tab, setTab] = useState<"all" | "unread">("all");
-  const visible = tab === "unread" ? rows.filter((r) => isNew(r.created_at)) : rows;
+  const visible = tab === "unread" ? rows.filter((r) => !r.read) : rows;
 
   return (
     <div className="flex flex-col gap-4">
@@ -108,49 +170,15 @@ export function NotificationsList({ rows }: { rows: LogRow[] }) {
           </span>
           <p className="text-sm text-muted-foreground">
             {tab === "unread"
-              ? "Nothing new in the last 7 days."
+              ? "Nothing unread."
               : "No notifications yet. When a doctor or administrator opens your record, you'll see it here."}
           </p>
         </div>
       ) : (
         <ul className="beacon-rise flex flex-col gap-3">
-          {visible.map((log) => {
-            const who = log.accessor_name || "A verified provider";
-            const { icon: Icon, tone, title } = describe(log.access_type, who);
-            const fresh = isNew(log.created_at);
-            return (
-              <li key={log.id} className="surface flex items-start gap-3.5 p-4 sm:p-5">
-                <span
-                  className={cn(
-                    "grid size-10 shrink-0 place-items-center rounded-xl",
-                    tone === "warning"
-                      ? "bg-caution/10 text-caution"
-                      : "bg-info/10 text-info",
-                  )}
-                >
-                  <Icon className="size-5" />
-                </span>
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-start justify-between gap-3">
-                    <p className="text-sm font-medium text-foreground">
-                      {title}
-                      {fresh && (
-                        <Badge variant="info" className="ml-2 align-middle">
-                          New
-                        </Badge>
-                      )}
-                    </p>
-                    <span className="tabular shrink-0 text-xs text-muted-foreground">
-                      {relativeTime(log.created_at)}
-                    </span>
-                  </div>
-                  {log.note && (
-                    <p className="mt-1 text-xs text-muted-foreground">{log.note}</p>
-                  )}
-                </div>
-              </li>
-            );
-          })}
+          {visible.map((log) => (
+            <NotificationItem key={log.id} log={log} />
+          ))}
         </ul>
       )}
     </div>
