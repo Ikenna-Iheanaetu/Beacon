@@ -57,7 +57,7 @@ const LINKS = [
     href: "/admin/auth-log",
     icon: KeyRound,
     title: "Auth activity",
-    description: "Every signup and sign-in, across every role.",
+    description: "Every signup and sign-in for patient, provider, and institution accounts.",
   },
 ] as const;
 

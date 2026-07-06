@@ -98,7 +98,8 @@ export async function signUpAction(
     return { error: error.message };
   }
 
-  if (data.user) {
+  // Admin activity isn't tracked here — only regular accounts.
+  if (data.user && !(await isAdmin())) {
     await logAuthEvent(data.user.id, "signup", parsed.data.email);
   }
 
@@ -152,7 +153,8 @@ export async function signInAction(
     return { error: "That email or password didn't match. Please try again." };
   }
 
-  if (signInData.user) {
+  // Admin activity isn't tracked here — only regular accounts.
+  if (signInData.user && !(await isAdmin())) {
     await logAuthEvent(signInData.user.id, "login", parsed.data.email);
   }
 

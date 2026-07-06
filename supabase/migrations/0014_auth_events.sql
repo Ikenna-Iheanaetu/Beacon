@@ -1,8 +1,8 @@
 -- Beacon — 0014_auth_events.sql
--- A platform-wide signup/login audit trail — every account, every role
--- (patient, provider, institution; "admin" is just an allowlisted email on an
--- otherwise-patient account, so admin sign-ins are captured here too since
--- they go through the same signInAction).
+-- A platform-wide signup/login audit trail for regular accounts (patient,
+-- provider, institution). Admin activity is deliberately excluded — the
+-- app-level check lives in signUpAction/signInAction (via isAdmin()), not
+-- here, so this table only ever contains non-admin events.
 --
 -- Mirrors access_logs / admin_actions: NO client policies at all — this is
 -- written only via the secret-key path inside signUpAction/signInAction, and
