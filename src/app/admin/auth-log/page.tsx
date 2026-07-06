@@ -56,12 +56,14 @@ export default async function AdminAuthLogPage() {
 
   const rows = (events ?? []) as AuthEventRow[];
 
-  // Current role per user — looked up once, not stored per-event, since a
-  // role can change after the fact and the current one is what's useful here.
+  // Current name/role per user — looked up once, not stored per-event, since
+  // both can change after the fact and the current values are what's useful
+  // here (a name at signup time isn't necessarily still accurate).
   const userIds = [...new Set(rows.map((r) => r.user_id))];
   const { data: profs } = userIds.length
-    ? await admin.from("profiles").select("id, role").in("id", userIds)
-    : { data: [] as { id: string; role: UserRole }[] };
+    ? await admin.from("profiles").select("id, full_name, role").in("id", userIds)
+    : { data: [] as { id: string; full_name: string | null; role: UserRole }[] };
+  const nameById = new Map((profs ?? []).map((p) => [p.id, p.full_name]));
   const roleById = new Map((profs ?? []).map((p) => [p.id, p.role]));
 
   return (
@@ -91,7 +93,7 @@ export default async function AdminAuthLogPage() {
               <TableHeader>
                 <TableRow>
                   <TableHead>When</TableHead>
-                  <TableHead>Email</TableHead>
+                  <TableHead>Account</TableHead>
                   <TableHead>Role</TableHead>
                   <TableHead>Event</TableHead>
                 </TableRow>
@@ -99,12 +101,18 @@ export default async function AdminAuthLogPage() {
               <TableBody>
                 {rows.map((r) => {
                   const role = roleById.get(r.user_id);
+                  const name = nameById.get(r.user_id);
                   return (
                     <TableRow key={r.id}>
                       <TableCell className="tabular whitespace-nowrap text-muted-foreground">
                         {formatWhen(r.created_at)}
                       </TableCell>
-                      <TableCell className="tabular font-medium">{r.email}</TableCell>
+                      <TableCell>
+                        <div className="font-medium">{name || "—"}</div>
+                        <div className="tabular text-sm text-muted-foreground">
+                          {r.email}
+                        </div>
+                      </TableCell>
                       <TableCell className="text-sm text-muted-foreground">
                         {role ? roleLabel(role) : "—"}
                       </TableCell>
