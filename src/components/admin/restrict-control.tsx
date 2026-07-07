@@ -134,7 +134,7 @@ export function RestrictControl({
         <form
           action={restrictFormAction}
           onSubmit={() => {
-            submitted.current = true;
+            restrictSubmitted.current = true;
           }}
           className="flex flex-col gap-4"
         >
