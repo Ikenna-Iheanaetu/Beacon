@@ -274,7 +274,7 @@ export interface ProviderSearchState {
 /**
  * Search provider accounts by name or email. Unlike patient search, this
  * isn't a lookup into encrypted medical data — it's the same account info
- * already visible on /admin/verifications, just searchable directly.
+ * already visible on the Approvals page, just searchable directly.
  */
 export async function searchProviders(
   _prev: ProviderSearchState,

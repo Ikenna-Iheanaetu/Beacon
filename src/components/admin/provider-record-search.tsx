@@ -61,7 +61,7 @@ function StatusBadge({ status }: { status: string }) {
 /**
  * The provider half of "Find a record": search doctors/nurses by name or
  * email, then view their account + council license + facility affiliation
- * with the same approve/reject actions used on /admin/verifications, right
+ * with the same approve/reject actions used on the Approvals page, right
  * in place.
  */
 export function ProviderRecordSearch() {
